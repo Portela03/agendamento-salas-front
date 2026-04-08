@@ -1,0 +1,233 @@
+import { type FormEvent, type ReactNode, useState } from 'react';
+import { ArrowRight, KeyRound, ShieldCheck, UserPlus2 } from 'lucide-react';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
+import { useAuth } from '../hooks/useAuth';
+import { type UserRole, userService } from '../services/userService';
+
+export function LoginPage() {
+  const { signIn, isLoading } = useAuth();
+
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [role, setRole] = useState<UserRole>('PROFESSOR');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+
+    try {
+      if (isRegisterMode) {
+        await userService.register({ name, email, password, role });
+        setSuccess(`Solicitação enviada para perfil de ${role === 'COORDENADOR' ? 'coordenador' : 'usuário professor'}. O coordenador responsável precisa aprovar seu acesso antes do primeiro login.`);
+        setIsRegisterMode(false);
+        setName('');
+        setPassword('');
+        setRole('PROFESSOR');
+        return;
+      }
+
+      await signIn({ email, password });
+    } catch (err: unknown) {
+      if (
+        err &&
+        typeof err === 'object' &&
+        'response' in err &&
+        err.response &&
+        typeof err.response === 'object' &&
+        'data' in err.response &&
+        err.response.data &&
+        typeof err.response.data === 'object' &&
+        'message' in err.response.data
+      ) {
+        setError(String(err.response.data.message));
+        return;
+      }
+
+      setError(
+        isRegisterMode
+          ? 'Não foi possível enviar a solicitação agora. Tente novamente.'
+          : 'Não foi possível entrar agora. Tente novamente.',
+      );
+    }
+  }
+
+  return (
+    <div className="relative min-h-screen overflow-hidden">
+      <div className="absolute inset-0 bg-hero-grid bg-[size:26px_26px] opacity-40" />
+      <div className="container relative flex min-h-screen items-center py-10">
+        <div className="grid w-full gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+          <section className="animate-fade-up space-y-8">
+            <Badge className="w-fit border border-brand-teal/10 bg-white/70 px-4 py-2 text-brand-teal shadow-soft" variant="default">
+              Fatec Zona Leste • Reserva de Salas
+            </Badge>
+
+            <div className="max-w-2xl space-y-5">
+              <h1 className="font-serif text-5xl leading-tight text-balance text-brand-ink md:text-6xl">
+                Um acesso organizado, seguro e com aprovação institucional.
+              </h1>
+              <p className="max-w-xl text-lg leading-8 text-muted-foreground">
+                Professores e coordenadores solicitam acesso de forma simples. A aprovação continua centralizada,
+                mantendo o sistema consistente e pronto para a rotina acadêmica.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <FeatureCard
+                description="Solicitação rápida para professores e coordenadores sem abrir mão da triagem institucional."
+                icon={<UserPlus2 className="h-5 w-5" />}
+                title="Cadastro guiado"
+              />
+              <FeatureCard
+                description="Somente o coordenador libera o acesso final, com controle real do fluxo."
+                icon={<ShieldCheck className="h-5 w-5" />}
+                title="Aprovação humana"
+              />
+              <FeatureCard
+                description="Autenticação centralizada com status do usuário respeitado antes do login."
+                icon={<KeyRound className="h-5 w-5" />}
+                title="Entrada segura"
+              />
+            </div>
+          </section>
+
+          <Card className="animate-fade-up border-brand-teal/10 bg-white/80">
+            <CardHeader className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <Badge variant={isRegisterMode ? 'pending' : 'default'}>
+                  {isRegisterMode ? 'Solicitação de acesso' : 'Acesso institucional'}
+                </Badge>
+                <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  {isRegisterMode ? 'Novo usuário' : 'Login'}
+                </span>
+              </div>
+              <CardTitle className="text-3xl text-brand-ink">
+                {isRegisterMode ? 'Peça sua aprovação' : 'Entre na plataforma'}
+              </CardTitle>
+              <CardDescription className="text-base">
+                {isRegisterMode
+                  ? 'Seu cadastro será analisado por um coordenador antes da liberação.'
+                  : 'Acesse seu painel com as credenciais já aprovadas pelo coordenador.'}
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent>
+              <form className="space-y-5" onSubmit={handleSubmit}>
+                {isRegisterMode && (
+                  <>
+                    <Field htmlFor="name" label="Nome completo">
+                      <Input
+                        id="name"
+                        placeholder="Digite seu nome"
+                        required
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                      />
+                    </Field>
+
+                    <Field htmlFor="role" label="Perfil solicitado">
+                      <Select
+                        id="role"
+                        value={role}
+                        onChange={(event) => setRole(event.target.value as UserRole)}
+                      >
+                        <option value="PROFESSOR">Usuário professor</option>
+                        <option value="COORDENADOR">Coordenador</option>
+                      </Select>
+                    </Field>
+                  </>
+                )}
+
+                <Field htmlFor="email" label="E-mail">
+                  <Input
+                    id="email"
+                    autoComplete="email"
+                    placeholder="nome@fatec.sp.gov.br"
+                    required
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
+                </Field>
+
+                <Field htmlFor="password" label="Senha">
+                  <Input
+                    id="password"
+                    autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
+                    placeholder="Digite sua senha"
+                    required
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </Field>
+
+                {error && (
+                  <div className="rounded-2xl border border-brand-wine/20 bg-brand-wine/5 px-4 py-3 text-sm text-brand-wine">
+                    {error}
+                  </div>
+                )}
+
+                {success && (
+                  <div className="rounded-2xl border border-brand-teal/20 bg-brand-teal/5 px-4 py-3 text-sm text-brand-teal">
+                    {success}
+                  </div>
+                )}
+
+                <div className="space-y-3 pt-2">
+                  <Button className="group w-full" disabled={isLoading} size="lg" type="submit">
+                    {isLoading ? 'Processando...' : isRegisterMode ? 'Enviar solicitação' : 'Entrar agora'}
+                    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </Button>
+
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      setIsRegisterMode((current) => !current);
+                      setError('');
+                      setSuccess('');
+                      setRole('PROFESSOR');
+                    }}
+                    type="button"
+                    variant="outline"
+                  >
+                    {isRegisterMode ? 'Voltar para o login' : 'Solicitar novo cadastro'}
+                  </Button>
+                </div>
+              </form>
+
+              
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ children, htmlFor, label }: { children: ReactNode; htmlFor: string; label: string }) {
+  return (
+    <label className="block space-y-2" htmlFor={htmlFor}>
+      <span className="text-sm font-semibold text-brand-ink">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function FeatureCard({ description, icon, title }: { description: string; icon: ReactNode; title: string }) {
+  return (
+    <div className="rounded-[24px] border border-white/60 bg-white/70 p-5 shadow-soft backdrop-blur-sm">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-teal text-white">{icon}</div>
+      <h2 className="text-lg font-bold text-brand-ink">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+    </div>
+  );
+}
