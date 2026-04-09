@@ -1,10 +1,22 @@
+import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { PrivateRoute } from './components/PrivateRoute';
 import { LoginPage } from './pages/LoginPage';
 import { CoordinatorDashboard } from './pages/CoordinatorDashboard';
 import { ProfessorDashboard } from './pages/ProfessorDashboard';
+import { api } from './services/api';
 
 export function App() {
+  useEffect(() => {
+    const wakeupKey = '@agendamento:backend:wakeup-sent';
+    if (sessionStorage.getItem(wakeupKey)) return;
+
+    sessionStorage.setItem(wakeupKey, '1');
+    void api.get('/health').catch(() => {
+      // The wake-up ping is best-effort and should not impact UX if it fails.
+    });
+  }, []);
+
   return (
     <Routes>
       {/* Public */}
