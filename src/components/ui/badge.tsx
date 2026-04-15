@@ -12,6 +12,9 @@ const badgeVariants = cva(
         subtle: 'bg-black/5 text-black/70',
         professor: 'bg-brand-teal/12 text-brand-teal ring-1 ring-brand-teal/10',
         coordinator: 'bg-brand-wine/12 text-brand-wine ring-1 ring-brand-wine/10',
+        approved: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200',
+        rejected: 'bg-rose-100 text-rose-700 ring-1 ring-rose-200',
+        waiting: 'bg-amber-100 text-amber-700 ring-1 ring-amber-200',
       },
     },
     defaultVariants: {
