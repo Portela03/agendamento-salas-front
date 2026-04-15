@@ -1,12 +1,12 @@
-import { type ReactNode } from 'react';
-import { CalendarDays, LogOut, MapPinned, NotebookTabs } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CalendarPlus2, History, LogOut } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { useAuth } from '../hooks/useAuth';
 
 export function ProfessorDashboard() {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -39,50 +39,25 @@ export function ProfessorDashboard() {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-5 md:grid-cols-3">
-          <ProfessorCard
-            description="Planeje o uso dos espaços por período letivo e horário disponível."
-            icon={<CalendarDays className="h-5 w-5" />}
-            title="Agenda"
-          />
-          <ProfessorCard
-            description="Visualize salas com contexto mais claro, sem depender de consultas dispersas."
-            icon={<MapPinned className="h-5 w-5" />}
-            title="Salas"
-          />
-          <ProfessorCard
-            description="Acompanhe solicitações e histórico com uma leitura mais humana do processo."
-            icon={<NotebookTabs className="h-5 w-5" />}
-            title="Solicitações"
-          />
-        </div>
+        <div className="mt-8 flex flex-wrap items-center gap-3 rounded-[28px] border border-brand-teal/10 bg-white/80 px-6 py-5 shadow-panel">
+          <div className="flex-1 space-y-1">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-teal">Fluxo de reservas</p>
+            <p className="text-base text-brand-ink">Clique para abrir a página de solicitação e preencher o formulário separado.</p>
+          </div>
 
-        <Card className="mt-8 bg-gradient-to-br from-brand-teal to-brand-ink text-white">
-          <CardHeader>
-            <CardTitle className="text-white">Ambiente pronto para reservas</CardTitle>
-            <CardDescription className="text-white/70">
-              A base visual do painel já está preparada para receber os próximos módulos do professor.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="max-w-2xl text-sm leading-7 text-white/80">
-              Quando você adicionar os fluxos de reserva, consulta de disponibilidade e histórico, essa estrutura já suporta crescimento sem perder consistência visual.
-            </p>
-          </CardContent>
-        </Card>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button onClick={() => navigate('/professor/reservas')} size="lg">
+              <CalendarPlus2 className="mr-2 h-4 w-4" />
+              Solicitar reserva
+            </Button>
+
+            <Button onClick={() => navigate('/professor/historicoreservas')} size="lg" variant="outline">
+              <History className="mr-2 h-4 w-4" />
+              Histórico de reservas
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
-  );
-}
-
-function ProfessorCard({ description, icon, title }: { description: string; icon: ReactNode; title: string }) {
-  return (
-    <Card className="border-white/60 bg-white/80">
-      <CardContent className="p-6">
-        <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-wine text-white">{icon}</div>
-        <h2 className="text-xl font-bold text-brand-ink">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
   );
 }

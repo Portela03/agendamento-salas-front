@@ -3,7 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { PrivateRoute } from './components/PrivateRoute';
 import { LoginPage } from './pages/LoginPage';
 import { CoordinatorDashboard } from './pages/CoordinatorDashboard';
+import { HistoricoReservasPage } from './pages/HistoricoReservasPage';
 import { ProfessorDashboard } from './pages/ProfessorDashboard';
+import { SolicitarReservaPage } from './pages/SolicitarReservaPage';
 import { api } from './services/api';
 
 export function App() {
@@ -30,6 +32,8 @@ export function App() {
       {/* Protected: Professor only */}
       <Route element={<PrivateRoute allowedRoles={['PROFESSOR']} />}>
         <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
+        <Route path="/professor/reservas" element={<SolicitarReservaPage />} />
+        <Route path="/professor/historicoreservas" element={<HistoricoReservasPage />} />
       </Route>
 
       {/* Catch-all */}
