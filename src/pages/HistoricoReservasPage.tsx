@@ -4,22 +4,28 @@ import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { api } from '../services/api';
+import { Reserva, reservaService } from '../services/reservaService';
 
-interface Reservation {
-  id: string;
-  sala?: string;
-  salaId?: string;
-  data?: string;
-  horario?: string;
-  periodo?: string;
-  semestre?: string;
-  status?: string;
+function statusLabel(status: string) {
+  if (status === 'APROVADA') return 'Aprovada';
+  if (status === 'REJEITADA') return 'Rejeitada';
+  return 'Aguardando';
+}
+
+function statusVariant(status: string): 'approved' | 'rejected' | 'waiting' {
+  if (status === 'APROVADA') return 'approved';
+  if (status === 'REJEITADA') return 'rejected';
+  return 'waiting';
+}
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('pt-BR');
 }
 
 export function HistoricoReservasPage() {
   const navigate = useNavigate();
-  const [reservas, setReservas] = useState<Reservation[]>([]);
+  const [reservas, setReservas] = useState<Reserva[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,8 +33,7 @@ export function HistoricoReservasPage() {
     try {
       setIsLoading(true);
       setError('');
-
-      const { data } = await api.get<Reservation[]>('/reservas');
+      const data = await reservaService.listarPorProfessor();
       setReservas(data);
     } catch {
       setError('Não foi possível carregar o histórico de reservas agora.');
@@ -120,20 +125,43 @@ export function HistoricoReservasPage() {
                 {reservas.map((reserva) => (
                   <div
                     key={reserva.id}
-                    className="flex flex-col gap-4 rounded-[24px] border border-brand-teal/10 bg-gradient-to-r from-white to-brand-mist/20 p-5 md:flex-row md:items-center md:justify-between"
+                    className="flex flex-col gap-4 rounded-[24px] border border-brand-teal/10 bg-gradient-to-r from-white to-brand-mist/20 p-5"
                   >
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-lg font-bold text-brand-ink">Sala {reserva.sala ?? reserva.salaId ?? 'N/D'}</h2>
-                        <Badge variant="default">{reserva.status ?? 'Pendente'}</Badge>
+                        <h2 className="text-lg font-bold text-brand-ink">
+                          Sala: {reserva.salaNome ?? reserva.salaId}
+                        </h2>
+                        <Badge variant={statusVariant(reserva.status ?? '')}>
+                          {statusLabel(reserva.status ?? '')}
+                        </Badge>
                       </div>
 
                       <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-                        <p>Data: {reserva.data ?? 'N/D'}</p>
-                        <p>Horário: {reserva.horario ?? 'N/D'}</p>
-                        <p>Período: {reserva.periodo ?? 'N/D'}</p>
-                        <p>Semestre: {reserva.semestre ?? 'N/D'}</p>
+                        <p>
+                          <span className="font-medium text-brand-ink">Data:</span>{' '}
+                          {reserva.data ? formatDate(reserva.data) : 'N/D'}
+                        </p>
+                        <p>
+                          <span className="font-medium text-brand-ink">Horário:</span>{' '}
+                          {reserva.horario ?? 'N/D'}
+                        </p>
+                        <p>
+                          <span className="font-medium text-brand-ink">Período:</span>{' '}
+                          {reserva.periodo ?? 'N/D'}
+                        </p>
+                        <p>
+                          <span className="font-medium text-brand-ink">Semestre:</span>{' '}
+                          {reserva.semestre ?? 'N/D'}
+                        </p>
                       </div>
+
+                      {reserva.justificativa && (
+                        <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                          <span className="font-semibold">Motivo da rejeição:</span>{' '}
+                          {reserva.justificativa}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

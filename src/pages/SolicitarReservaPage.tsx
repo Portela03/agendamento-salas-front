@@ -1,5 +1,5 @@
-import { type FormEvent, type ReactNode, useState } from 'react';
-import { ArrowLeft, Send } from 'lucide-react';
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
+import { ArrowLeft, LoaderCircle, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -8,9 +8,14 @@ import { Input } from '../components/ui/input';
 import { Select } from '../components/ui/select';
 import { api } from '../services/api';
 
+interface Sala {
+  id: string;
+  nome: string;
+}
 
 export function SolicitarReservaPage() {
   const navigate = useNavigate();
+  const [salas, setSalas] = useState<Sala[]>([]);
   const [salaId, setSalaId] = useState('');
   const [data, setData] = useState('');
   const [horario, setHorario] = useState('');
@@ -20,6 +25,12 @@ export function SolicitarReservaPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  useEffect(() => {
+    api.get<Sala[]>('/salas')
+      .then(({ data }) => setSalas(data))
+      .catch(() => setError('Não foi possível carregar a lista de salas.'));
+  }, []);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -28,15 +39,17 @@ export function SolicitarReservaPage() {
     try {
       setIsSubmitting(true);
 
+      // Garante que a data local não fica um dia atrás por fuso horário
+      const [year, month, day] = data.split('-').map(Number);
+      const dataLocal = new Date(year, month - 1, day, 12, 0, 0);
 
-await api.post('/reservas', {
-  salaId,
-  data: new Date(data).toISOString(),
-  horario,
-  periodo,
-  semestre,
-});
-
+      await api.post('/reservas', {
+        salaId,
+        data: dataLocal.toISOString(),
+        horario,
+        periodo,
+        semestre,
+      });
 
       setSuccess('Solicitação enviada com sucesso. O pedido foi registrado para análise.');
       setSalaId('');
@@ -44,8 +57,11 @@ await api.post('/reservas', {
       setHorario('');
       setPeriodo('');
       setSemestre('');
-    } catch {
-      setError('Não foi possível enviar a solicitação agora. Verifique os campos e tente novamente.');
+    } catch (err: unknown) {
+      // Mostra a mensagem de erro real do servidor (ex.: conflito de horário)
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      const serverMsg = axiosError?.response?.data?.message;
+      setError(serverMsg ?? 'Não foi possível enviar a solicitação agora. Verifique os campos e tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -102,13 +118,26 @@ await api.post('/reservas', {
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="grid gap-5 md:grid-cols-2">
                 <Field label="Sala" htmlFor="salaId">
-                  <Input
-                    id="salaId"
-                    placeholder="Ex.: 301"
-                    required
-                    value={salaId}
-                    onChange={(event) => setSalaId(event.target.value)}
-                  />
+                  {salas.length === 0 ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      Carregando salas...
+                    </div>
+                  ) : (
+                    <Select
+                      id="salaId"
+                      required
+                      value={salaId}
+                      onChange={(e) => setSalaId(e.target.value)}
+                    >
+                      <option value="">Selecione uma sala</option>
+                      {salas.map((sala) => (
+                        <option key={sala.id} value={sala.id}>
+                          {sala.nome}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
                 </Field>
 
                 <Field label="Data" htmlFor="data">
@@ -116,6 +145,7 @@ await api.post('/reservas', {
                     id="data"
                     required
                     type="date"
+                    min={new Date().toISOString().split('T')[0]}
                     value={data}
                     onChange={(event) => setData(event.target.value)}
                   />
@@ -164,7 +194,7 @@ await api.post('/reservas', {
               )}
 
               <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
-                <Button className="group w-full sm:w-auto" disabled={isSubmitting} size="lg" type="submit">
+                <Button className="group w-full sm:w-auto" disabled={isSubmitting || salas.length === 0} size="lg" type="submit">
                   {isSubmitting ? 'Enviando...' : 'Solicitar reserva'}
                   <Send className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Button>
