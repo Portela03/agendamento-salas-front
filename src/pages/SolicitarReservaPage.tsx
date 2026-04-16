@@ -1,34 +1,43 @@
-import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
-import { ArrowLeft, LoaderCircle, Send } from 'lucide-react';
+import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, LoaderCircle, Send } from 'lucide-react';
+
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Select } from '../components/ui/select';
 import { api } from '../services/api';
-
-interface Sala {
-  id: string;
-  nome: string;
-}
+import { listAvaiables, type ClassItem } from '../services/classService';
 
 export function SolicitarReservaPage() {
   const navigate = useNavigate();
-  const [salas, setSalas] = useState<Sala[]>([]);
+
+  const [classesDisponiveis, setClassesDisponiveis] = useState<ClassItem[]>([]);
   const [salaId, setSalaId] = useState('');
   const [data, setData] = useState('');
   const [horario, setHorario] = useState('');
   const [periodo, setPeriodo] = useState('');
   const [semestre, setSemestre] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    api.get<Sala[]>('/salas')
-      .then(({ data }) => setSalas(data))
-      .catch(() => setError('Não foi possível carregar a lista de salas.'));
+    async function load() {
+      try {
+        setLoadingClasses(true);
+        const result = await listAvaiables();
+        setClassesDisponiveis(result);
+      } catch {
+        setError('Não foi possível carregar as classes disponíveis.');
+      } finally {
+        setLoadingClasses(false);
+      }
+    }
+
+    void load();
   }, []);
 
   async function handleSubmit(e: FormEvent) {
@@ -36,32 +45,35 @@ export function SolicitarReservaPage() {
     setError('');
     setSuccess('');
 
+    if (!salaId) {
+      setError('Selecione uma sala/classe.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
-      // Garante que a data local não fica um dia atrás por fuso horário
       const [year, month, day] = data.split('-').map(Number);
       const dataLocal = new Date(year, month - 1, day, 12, 0, 0);
 
       await api.post('/reservas', {
-        salaId,
+        classId: salaId,
         data: dataLocal.toISOString(),
         horario,
         periodo,
         semestre,
       });
 
-      setSuccess('Solicitação enviada com sucesso. O pedido foi registrado para análise.');
+
+      setSuccess('Solicitação enviada com sucesso.');
       setSalaId('');
       setData('');
       setHorario('');
       setPeriodo('');
       setSemestre('');
-    } catch (err: unknown) {
-      // Mostra a mensagem de erro real do servidor (ex.: conflito de horário)
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      const serverMsg = axiosError?.response?.data?.message;
-      setError(serverMsg ?? 'Não foi possível enviar a solicitação agora. Verifique os campos e tente novamente.');
+    } catch (err: any) {
+      const serverMsg = err?.response?.data?.message;
+      setError(serverMsg ?? 'Não foi possível enviar a solicitação agora.');
     } finally {
       setIsSubmitting(false);
     }
@@ -71,141 +83,89 @@ export function SolicitarReservaPage() {
     <div className="min-h-screen bg-transparent">
       <div className="container py-8">
         <div className="rounded-[32px] border border-brand-teal/10 bg-white/85 p-8 shadow-panel">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-4">
-              <Badge className="w-fit" variant="default">
-                Área do professor
-              </Badge>
-              <div>
-                <h1 className="font-serif text-4xl leading-tight text-brand-ink md:text-5xl">
-                  Solicite uma reserva com clareza e poucos passos.
-                </h1>
-                <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-                  Preencha os dados da sala, data e horário para registrar sua solicitação no fluxo institucional.
-                </p>
-              </div>
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <div>
+              <Badge variant="default">Reserva de sala</Badge>
+              <h1 className="mt-3 font-serif text-3xl text-brand-ink">Solicitar reserva</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Selecione a classe disponível e preencha os dados da solicitação.
+              </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={() => navigate('/professor/dashboard')} variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar ao dashboard
-              </Button>
-            </div>
+            <Button variant="outline" onClick={() => navigate('/professor/dashboard')}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar
+            </Button>
           </div>
-        </div>
 
-        <Card className="mt-8 overflow-hidden border-brand-teal/10 bg-white/90 shadow-panel">
-          <div className="h-2 bg-gradient-to-r from-brand-wine via-brand-teal to-brand-wine" />
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <Field htmlFor="salaId" label="Classe">
+              {loadingClasses ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                  Carregando classes...
+                </div>
+              ) : (
+                <Select id="salaId" required value={salaId} onChange={(e) => setSalaId(e.target.value)}>
+                  <option value="">Selecione uma classe</option>
+                  {classesDisponiveis.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} — {c.type} — Capacidade: {c.capacity}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
 
-          <CardHeader className="border-b border-brand-teal/10 bg-gradient-to-r from-brand-mist/30 via-white to-brand-mist/20 pb-6">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div className="space-y-2">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-teal">Formulário de reserva</p>
-                <CardTitle className="text-3xl text-brand-ink">Preencha os dados para registrar a solicitação</CardTitle>
-                <CardDescription className="max-w-2xl">
-                  A tela foi organizada para manter o fluxo direto, com hierarquia visual clara e foco no envio.
-                </CardDescription>
-              </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field htmlFor="data" label="Data">
+                <Input id="data" type="date" required value={data} onChange={(e) => setData(e.target.value)} />
+              </Field>
 
-              <div className="rounded-full border border-brand-teal/10 bg-white px-4 py-2 text-sm text-brand-ink shadow-sm">
-                Fluxo institucional
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-6 md:p-8">
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Sala" htmlFor="salaId">
-                  {salas.length === 0 ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                      Carregando salas...
-                    </div>
-                  ) : (
-                    <Select
-                      id="salaId"
-                      required
-                      value={salaId}
-                      onChange={(e) => setSalaId(e.target.value)}
-                    >
-                      <option value="">Selecione uma sala</option>
-                      {salas.map((sala) => (
-                        <option key={sala.id} value={sala.id}>
-                          {sala.nome}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                </Field>
-
-                <Field label="Data" htmlFor="data">
-                  <Input
-                    id="data"
-                    required
-                    type="date"
-                    min={new Date().toISOString().split('T')[0]}
-                    value={data}
-                    onChange={(event) => setData(event.target.value)}
-                  />
-                </Field>
-
-                <Field label="Horário" htmlFor="horario">
-                  <Input
-                    id="horario"
-                    placeholder="Ex.: 19:00 - 21:00"
-                    required
-                    value={horario}
-                    onChange={(event) => setHorario(event.target.value)}
-                  />
-                </Field>
-
-                <Field label="Período" htmlFor="periodo">
-                  <Select id="periodo" required value={periodo} onChange={(event) => setPeriodo(event.target.value)}>
-                    <option value="">Selecione um período</option>
-                    <option value="matutino">Matutino</option>
-                    <option value="vespertino">Vespertino</option>
-                    <option value="noturno">Noturno</option>
-                  </Select>
-                </Field>
-              </div>
-
-              <Field label="Semestre" htmlFor="semestre">
+              <Field htmlFor="horario" label="Horário">
                 <Input
-                  id="semestre"
-                  placeholder="Ex.: 2026/1"
+                  id="horario"
+                  type="time"
                   required
-                  value={semestre}
-                  onChange={(event) => setSemestre(event.target.value)}
+                  value={horario}
+                  onChange={(e) => setHorario(e.target.value)}
                 />
               </Field>
 
-              {error && (
-                <div className="rounded-2xl border border-brand-wine/20 bg-brand-wine/5 px-4 py-3 text-sm text-brand-wine">
-                  {error}
-                </div>
-              )}
+              <Field htmlFor="periodo" label="Período">
+                <Input
+                  id="periodo"
+                  placeholder="Ex: Noturno"
+                  required
+                  value={periodo}
+                  onChange={(e) => setPeriodo(e.target.value)}
+                />
+              </Field>
 
-              {success && (
-                <div className="rounded-2xl border border-brand-teal/20 bg-brand-teal/5 px-4 py-3 text-sm text-brand-teal">
-                  {success}
-                </div>
-              )}
+              <Field htmlFor="semestre" label="Semestre">
+                <Input
+                  id="semestre"
+                  placeholder="Ex: 2026.1"
+                  required
+                  value={semestre}
+                  onChange={(e) => setSemestre(e.target.value)}
+                />
+              </Field>
+            </div>
 
-              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
-                <Button className="group w-full sm:w-auto" disabled={isSubmitting || salas.length === 0} size="lg" type="submit">
-                  {isSubmitting ? 'Enviando...' : 'Solicitar reserva'}
-                  <Send className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </Button>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            {success && <p className="text-sm text-green-600">{success}</p>}
 
-                <Button className="w-full sm:w-auto" onClick={() => navigate('/professor/dashboard')} type="button" variant="outline">
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+            <Button
+              className="group"
+              disabled={isSubmitting || loadingClasses || classesDisponiveis.length === 0}
+              type="submit"
+            >
+              {isSubmitting ? 'Enviando...' : 'Solicitar reserva'}
+              <Send className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );

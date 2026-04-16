@@ -7,6 +7,7 @@ import { HistoricoReservasPage } from './pages/HistoricoReservasPage';
 import { ProfessorDashboard } from './pages/ProfessorDashboard';
 import { SolicitarReservaPage } from './pages/SolicitarReservaPage';
 import { api } from './services/api';
+import ClassManagementPage from './pages/ClassManagementPage';
 
 export function App() {
   useEffect(() => {
@@ -27,6 +28,7 @@ export function App() {
       {/* Protected: Coordenador only */}
       <Route element={<PrivateRoute allowedRoles={['COORDENADOR']} />}>
         <Route path="/coordenador/dashboard" element={<CoordinatorDashboard />} />
+        <Route path="/coordenador/salas" element={<ClassManagementPage />} />
       </Route>
 
       {/* Protected: Professor only */}
