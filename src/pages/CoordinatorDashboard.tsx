@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import {
   AlertTriangle,
+  Building2,
   CalendarCheck2,
   CheckCircle2,
   ClipboardList,
@@ -10,7 +11,14 @@ import {
   ShieldCheck,
   Users2,
   XCircle,
+  FlaskConical,
+  GraduationCap,
+  Mic2,
+  PencilLine,
+  Filter,
 } from 'lucide-react';
+import { ClassItem, listClasses } from '../services/classService';
+import { Link } from 'react-router-dom';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -36,6 +44,18 @@ function statusVariant(status: ReservaStatus): 'approved' | 'rejected' | 'waitin
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
   return d.toLocaleDateString('pt-BR');
+}
+
+function classTypeLabel(type?: ClassItem['type']) {
+  if (type === 'LABORATORIO') return 'Laboratório';
+  if (type === 'AUDITORIO') return 'Auditório';
+  return 'Sala';
+}
+
+function TypeIcon({ type }: { type?: ClassItem['type'] }) {
+  if (type === 'LABORATORIO') return <FlaskConical className="h-4 w-4" />;
+  if (type === 'AUDITORIO') return <Mic2 className="h-4 w-4" />;
+  return <GraduationCap className="h-4 w-4" />;
 }
 
 // ── Modal de Justificativa ────────────────────────────────────────────────────
@@ -154,8 +174,14 @@ export function CoordinatorDashboard() {
   // Modal rejeitar
   const [rejeitarId, setRejeitarId] = useState<string | null>(null);
 
+    // Salas
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [classesError, setClassesError] = useState('');
+  const [onlyAvailableClasses, setOnlyAvailableClasses] = useState(false);
+
   // Tab ativa
-  const [tab, setTab] = useState<'usuarios' | 'reservas'>('reservas');
+  const [tab, setTab] = useState<'usuarios' | 'reservas' | 'salas'>('reservas');
 
   // ── Loaders ──────────────────────────────────────────────────────────────
 
@@ -185,10 +211,27 @@ export function CoordinatorDashboard() {
     }
   }, []);
 
+ const loadClasses = useCallback(async () => {
+    try {
+      setClassesLoading(true);
+      setClassesError('');
+      const data = await listClasses(onlyAvailableClasses);
+      setClasses(data);
+    } catch {
+      setClassesError('Não foi possível carregar as salas.');
+    } finally {
+      setClassesLoading(false);
+    }
+  }, [onlyAvailableClasses]);
+
   useEffect(() => {
     void loadPendingUsers();
     void loadReservas();
   }, [loadReservas]);
+
+  useEffect(() => {
+    void loadClasses();
+  }, [loadClasses]);
 
   // ── Ações ─────────────────────────────────────────────────────────────────
 
@@ -322,6 +365,20 @@ export function CoordinatorDashboard() {
             <ClipboardList className="inline mr-2 h-4 w-4" />
             Reservas de Salas
           </button>
+
+          <button
+            id="tab-salas"
+            className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
+              tab === 'salas'
+                ? 'bg-white border border-b-white border-brand-teal/15 text-brand-ink -mb-px shadow-sm'
+                : 'text-muted-foreground hover:text-brand-ink'
+            }`}
+            onClick={() => setTab('salas')}
+          >
+            <Building2 className="inline mr-2 h-4 w-4" />
+            Salas
+          </button>
+
           <button
             id="tab-usuarios"
             className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
@@ -340,7 +397,6 @@ export function CoordinatorDashboard() {
             )}
           </button>
         </div>
-
         {/* ── TAB: RESERVAS ── */}
         {tab === 'reservas' && (
           <Card className="rounded-tl-none border-brand-teal/10 bg-white/85">
@@ -549,6 +605,89 @@ export function CoordinatorDashboard() {
                   </Button>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── TAB: SALAS ── */}
+        {tab === 'salas' && (
+          <Card className="rounded-tl-none border-brand-teal/10 bg-white/85">
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="text-3xl text-brand-ink">Salas Cadastradas</CardTitle>
+                <CardDescription className="mt-1">
+                  Consulte status, tipo e capacidade.
+                </CardDescription>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => setOnlyAvailableClasses((prev) => !prev)}>
+                  <Filter className="mr-2 h-4 w-4" />
+                  {onlyAvailableClasses ? 'Mostrando disponíveis' : 'Apenas disponíveis'}
+                </Button>
+
+                <Button onClick={() => void loadClasses()} variant="secondary">
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Atualizar
+                </Button>
+
+                <Link to="/coordenador/salas">
+                  <Button>
+                    <PencilLine className="mr-2 h-4 w-4" />
+                    Gerenciar cadastro
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              {classesError && <PanelMessage tone="error">{classesError}</PanelMessage>}
+              {classesLoading && <PanelMessage tone="info">Carregando salas...</PanelMessage>}
+
+              {!classesLoading && classes.length === 0 && (
+                <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-brand-teal/20 bg-brand-mist/20 px-6 py-12 text-center">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-teal/10 text-brand-teal">
+                    <Building2 className="h-6 w-6" />
+                  </div>
+                  <h2 className="text-xl font-bold text-brand-ink">Nenhuma sala encontrada</h2>
+                  <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+                    Cadastre uma nova sala para começar.
+                  </p>
+                </div>
+              )}
+
+              {!classesLoading && classes.length > 0 && (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {classes.map((item) => (
+                    <article
+                      key={item.id}
+                      className="rounded-2xl border border-brand-teal/10 bg-gradient-to-r from-white to-brand-mist/20 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-base font-semibold text-brand-ink">{item.name}</h3>
+                        <span
+                          className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                            item.status === 'DISPONIVEL'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-rose-100 text-rose-700'
+                          }`}
+                        >
+                          {item.status ?? 'INDISPONIVEL'}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+                        <p className="inline-flex items-center gap-2">
+                          <TypeIcon type={item.type} />
+                          {classTypeLabel(item.type)}
+                        </p>
+                        <p>Capacidade: {item.capacity}</p>
+                        <p>Descrição: {item.description?.trim() ? item.description : '—'}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
