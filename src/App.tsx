@@ -6,6 +6,7 @@ import { CoordinatorDashboard } from './pages/CoordinatorDashboard';
 import { HistoricoReservasPage } from './pages/HistoricoReservasPage';
 import { ProfessorDashboard } from './pages/ProfessorDashboard';
 import { SolicitarReservaPage } from './pages/SolicitarReservaPage';
+import { CalendarioPage } from './pages/CalendarioPage';
 import { api } from './services/api';
 import ClassManagementPage from './pages/ClassManagementPage';
 
@@ -29,6 +30,7 @@ export function App() {
       <Route element={<PrivateRoute allowedRoles={['COORDENADOR']} />}>
         <Route path="/coordenador/dashboard" element={<CoordinatorDashboard />} />
         <Route path="/coordenador/salas" element={<ClassManagementPage />} />
+        <Route path="/coordenador/calendario" element={<CalendarioPage />} />
       </Route>
 
       {/* Protected: Professor only */}
@@ -36,6 +38,7 @@ export function App() {
         <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
         <Route path="/professor/reservas" element={<SolicitarReservaPage />} />
         <Route path="/professor/historicoreservas" element={<HistoricoReservasPage />} />
+        <Route path="/professor/calendario" element={<CalendarioPage />} />
       </Route>
 
       {/* Catch-all */}

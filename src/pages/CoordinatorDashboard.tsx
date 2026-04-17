@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Building2,
   CalendarCheck2,
+  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -44,6 +45,13 @@ function statusVariant(status: ReservaStatus): 'approved' | 'rejected' | 'waitin
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
   return d.toLocaleDateString('pt-BR');
+}
+
+function formatHorario(reserva: Reserva) {
+  if (reserva.horarioInicio && reserva.horarioFim) {
+    return `${reserva.horarioInicio} - ${reserva.horarioFim}`;
+  }
+  return reserva.horario;
 }
 
 function classTypeLabel(type?: ClassItem['type']) {
@@ -396,6 +404,16 @@ export function CoordinatorDashboard() {
               </span>
             )}
           </button>
+
+          <Link to="/coordenador/calendario">
+            <button
+              id="tab-calendario"
+              className="px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors text-muted-foreground hover:text-brand-ink"
+            >
+              <CalendarDays className="inline mr-2 h-4 w-4" />
+              Calendário
+            </button>
+          </Link>
         </div>
         {/* ── TAB: RESERVAS ── */}
         {tab === 'reservas' && (
@@ -491,7 +509,7 @@ export function CoordinatorDashboard() {
                           </Badge>
                         </div>
 
-                        <div className="grid gap-1.5 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid gap-1.5 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
                           <p>
                             <span className="font-medium text-brand-ink">Professor:</span>{' '}
                             {reserva.professorNome ?? 'N/D'}
@@ -502,15 +520,11 @@ export function CoordinatorDashboard() {
                           </p>
                           <p>
                             <span className="font-medium text-brand-ink">Horário:</span>{' '}
-                            {reserva.horario}
+                            {formatHorario(reserva)}
                           </p>
                           <p>
-                            <span className="font-medium text-brand-ink">Período:</span>{' '}
-                            {reserva.periodo}
-                          </p>
-                          <p>
-                            <span className="font-medium text-brand-ink">Semestre:</span>{' '}
-                            {reserva.semestre}
+                            <span className="font-medium text-brand-ink">Turma:</span>{' '}
+                            {reserva.turma ?? 'N/D'}
                           </p>
                         </div>
 

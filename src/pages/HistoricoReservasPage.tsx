@@ -23,6 +23,13 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString('pt-BR');
 }
 
+function formatHorario(reserva: Reserva) {
+  if (reserva.horarioInicio && reserva.horarioFim) {
+    return `${reserva.horarioInicio} - ${reserva.horarioFim}`;
+  }
+  return reserva.horario ?? 'N/D';
+}
+
 export function HistoricoReservasPage() {
   const navigate = useNavigate();
   const [reservas, setReservas] = useState<Reserva[]>([]);
@@ -137,22 +144,18 @@ export function HistoricoReservasPage() {
                         </Badge>
                       </div>
 
-                      <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
                         <p>
                           <span className="font-medium text-brand-ink">Data:</span>{' '}
                           {reserva.data ? formatDate(reserva.data) : 'N/D'}
                         </p>
                         <p>
                           <span className="font-medium text-brand-ink">Horário:</span>{' '}
-                          {reserva.horario ?? 'N/D'}
+                          {formatHorario(reserva)}
                         </p>
                         <p>
-                          <span className="font-medium text-brand-ink">Período:</span>{' '}
-                          {reserva.periodo ?? 'N/D'}
-                        </p>
-                        <p>
-                          <span className="font-medium text-brand-ink">Semestre:</span>{' '}
-                          {reserva.semestre ?? 'N/D'}
+                          <span className="font-medium text-brand-ink">Turma:</span>{' '}
+                          {reserva.turma ?? 'N/D'}
                         </p>
                       </div>
 
