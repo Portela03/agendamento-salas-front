@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CalendarPlus2, History, LogOut } from 'lucide-react';
+import { CalendarDays, CalendarPlus2, History, LogOut } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../hooks/useAuth';
@@ -54,6 +54,11 @@ export function ProfessorDashboard() {
             <Button onClick={() => navigate('/professor/historicoreservas')} size="lg" variant="outline">
               <History className="mr-2 h-4 w-4" />
               Histórico de reservas
+            </Button>
+
+            <Button onClick={() => navigate('/professor/calendario')} size="lg" variant="outline">
+              <CalendarDays className="mr-2 h-4 w-4" />
+              Ver calendário
             </Button>
           </div>
         </div>

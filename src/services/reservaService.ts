@@ -8,8 +8,11 @@ export interface Reserva {
   salaId: string;
   data: string;
   horario: string;
-  periodo: string;
-  semestre: string;
+  horarioInicio?: string;
+  horarioFim?: string;
+  turma?: string;
+  periodo?: string;
+  semestre?: string;
   status: ReservaStatus;
   justificativa?: string;
   createdAt: string;
