@@ -1,12 +1,35 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, CalendarPlus2, History, LogOut } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../hooks/useAuth';
+import { useNotifications } from '../hooks/useNotifications';
+import { Toast, useToast } from '../components/Toast';
 
 export function ProfessorDashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { unreadNotifications, markAllAsRead } = useNotifications();
+  const { toasts, addToast, dismiss } = useToast();
+
+  // Show a toast for each unread notification and then mark them as read
+  useEffect(() => {
+    if (unreadNotifications.length === 0) return;
+
+    unreadNotifications.forEach((n) => {
+      const type =
+        n.type === 'RESERVA_APROVADA'
+          ? 'success'
+          : n.type === 'RESERVA_REJEITADA'
+          ? 'error'
+          : 'info';
+      addToast(n.message, type);
+    });
+
+    void markAllAsRead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unreadNotifications.length]);
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -63,6 +86,7 @@ export function ProfessorDashboard() {
           </div>
         </div>
       </div>
+      <Toast toasts={toasts} onDismiss={dismiss} />
     </div>
   );
 }
