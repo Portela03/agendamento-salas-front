@@ -27,6 +27,8 @@ import { Select } from '../components/ui/select';
 import { useAuth } from '../hooks/useAuth';
 import { PendingUser, userService } from '../services/userService';
 import { Reserva, ReservaStatus, reservaService } from '../services/reservaService';
+import { useNotifications } from '../hooks/useNotifications';
+import { Toast, useToast } from '../components/Toast';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -163,6 +165,21 @@ function PanelMessage({ children, tone }: { children: ReactNode; tone: 'error' |
 
 export function CoordinatorDashboard() {
   const { user, signOut } = useAuth();
+  const { unreadNotifications, markAllAsRead } = useNotifications();
+  const { toasts, addToast, dismiss } = useToast();
+
+  // Count unread per type for tab badges
+  const unreadReservas = unreadNotifications.filter((n) => n.type === 'NOVA_RESERVA').length;
+
+  // Show toast for each unread notification then mark all as read
+  useEffect(() => {
+    if (unreadNotifications.length === 0) return;
+    unreadNotifications.forEach((n) => {
+      addToast(n.message, n.type === 'NOVO_USUARIO' ? 'info' : 'info');
+    });
+    void markAllAsRead();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unreadNotifications.length]);
 
   // Usuários pendentes
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -372,6 +389,11 @@ export function CoordinatorDashboard() {
           >
             <ClipboardList className="inline mr-2 h-4 w-4" />
             Reservas de Salas
+            {unreadReservas > 0 && (
+              <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-wine text-[10px] font-bold text-white">
+                {unreadReservas}
+              </span>
+            )}
           </button>
 
           <button
@@ -706,6 +728,7 @@ export function CoordinatorDashboard() {
           </Card>
         )}
       </div>
+      <Toast toasts={toasts} onDismiss={dismiss} />
     </div>
   );
 }
