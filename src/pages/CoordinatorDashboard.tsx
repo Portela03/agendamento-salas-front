@@ -29,6 +29,7 @@ import { PendingUser, userService } from '../services/userService';
 import { Reserva, ReservaStatus, reservaService } from '../services/reservaService';
 import { useNotifications } from '../hooks/useNotifications';
 import { Toast, useToast } from '../components/Toast';
+import { CalendarioInline } from './CalendarioPage';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -168,8 +169,6 @@ export function CoordinatorDashboard() {
   const { unreadNotifications, markAllAsRead } = useNotifications();
   const { toasts, addToast, dismiss } = useToast();
 
-  // Count unread per type for tab badges
-  const unreadReservas = unreadNotifications.filter((n) => n.type === 'NOVA_RESERVA').length;
 
   // Show toast for each unread notification then mark all as read
   useEffect(() => {
@@ -206,7 +205,7 @@ export function CoordinatorDashboard() {
   const [onlyAvailableClasses, setOnlyAvailableClasses] = useState(false);
 
   // Tab ativa
-  const [tab, setTab] = useState<'usuarios' | 'reservas' | 'salas'>('reservas');
+  const [tab, setTab] = useState<'usuarios' | 'reservas' | 'salas' | 'calendario'>('reservas');
 
   // ── Loaders ──────────────────────────────────────────────────────────────
 
@@ -266,6 +265,15 @@ export function CoordinatorDashboard() {
       await loadPendingUsers();
     } catch {
       setUsersError('Não foi possível aprovar o usuário.');
+    }
+  }
+
+  async function handleRejectUser(userId: string) {
+    try {
+      await userService.reject(userId);
+      await loadPendingUsers();
+    } catch {
+      setUsersError('Não foi possível recusar o acesso.');
     }
   }
 
@@ -389,9 +397,9 @@ export function CoordinatorDashboard() {
           >
             <ClipboardList className="inline mr-2 h-4 w-4" />
             Reservas de Salas
-            {unreadReservas > 0 && (
+            {totalAguardando > 0 && (
               <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-wine text-[10px] font-bold text-white">
-                {unreadReservas}
+                {totalAguardando}
               </span>
             )}
           </button>
@@ -427,15 +435,18 @@ export function CoordinatorDashboard() {
             )}
           </button>
 
-          <Link to="/coordenador/calendario">
-            <button
-              id="tab-calendario"
-              className="px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors text-muted-foreground hover:text-brand-ink"
-            >
-              <CalendarDays className="inline mr-2 h-4 w-4" />
-              Calendário
-            </button>
-          </Link>
+          <button
+            id="tab-calendario"
+            className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
+              tab === 'calendario'
+                ? 'bg-white border border-b-white border-brand-teal/15 text-brand-ink -mb-px shadow-sm'
+                : 'text-muted-foreground hover:text-brand-ink'
+            }`}
+            onClick={() => setTab('calendario')}
+          >
+            <CalendarDays className="inline mr-2 h-4 w-4" />
+            Calendário
+          </button>
         </div>
         {/* ── TAB: RESERVAS ── */}
         {tab === 'reservas' && (
@@ -635,10 +646,16 @@ export function CoordinatorDashboard() {
                     </p>
                   </div>
 
-                  <Button className="md:min-w-36" onClick={() => void handleApproveUser(pendingUser.id)}>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Aprovar acesso
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button className="bg-emerald-600 text-white hover:bg-emerald-700 md:min-w-36" onClick={() => void handleApproveUser(pendingUser.id)}>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Aprovar acesso
+                    </Button>
+                    <Button className="border-rose-200 text-rose-600 hover:bg-rose-50 md:min-w-36" variant="outline" onClick={() => void handleRejectUser(pendingUser.id)}>
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Recusar
+                    </Button>
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -726,6 +743,12 @@ export function CoordinatorDashboard() {
               )}
             </CardContent>
           </Card>
+        )}
+        {/* ── TAB: CALENDÁRIO ── */}
+        {tab === 'calendario' && (
+          <div className="mt-0">
+            <CalendarioInline />
+          </div>
         )}
       </div>
       <Toast toasts={toasts} onDismiss={dismiss} />

@@ -58,4 +58,8 @@ export const userService = {
   approve: async (userId: string): Promise<void> => {
     await api.patch(`/users/${userId}/approve`);
   },
+
+  reject: async (userId: string): Promise<void> => {
+    await api.delete(`/users/${userId}/reject`);
+  },
 };

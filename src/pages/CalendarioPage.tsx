@@ -12,6 +12,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
 import { useAuth } from '../hooks/useAuth';
 import { fetchCalendario } from '../services/calendarService';
 import { listClasses, ClassItem } from '../services/classService';
@@ -617,5 +618,207 @@ export function CalendarioPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Versão inline para uso dentro de abas (sem header próprio) ────────────────
+
+export function CalendarioInline() {
+  const hoje = new Date();
+  const [mes, setMes] = useState(hoje.getMonth());
+  const [ano, setAno] = useState(hoje.getFullYear());
+
+  const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [filtroSala, setFiltroSala] = useState('');
+  const [filtroPeriodo, setFiltroPeriodo] = useState('');
+  const [filtroSemestre, setFiltroSemestre] = useState('');
+
+  const [selectedDay, setSelectedDay] = useState<DayInfo | null>(null);
+
+  const semestreDoMes = useMemo((): Semestre | null => {
+    const meioMes = new Date(ano, mes, 15);
+    return getSemestreAtivo(meioMes);
+  }, [ano, mes]);
+
+  const holidayMap = useMemo(() => buildHolidayMap(ano), [ano]);
+
+  useEffect(() => {
+    listClasses().then(setClasses).catch(() => {});
+  }, []);
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await fetchCalendario({
+        mes: mes + 1,
+        ano,
+        classId: filtroSala || undefined,
+        periodo: filtroPeriodo || undefined,
+        semestre: filtroSemestre || undefined,
+      });
+      setReservas(data);
+    } catch {
+      setError('Não foi possível carregar o calendário.');
+    } finally {
+      setLoading(false);
+    }
+  }, [mes, ano, filtroSala, filtroPeriodo, filtroSemestre]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  function prevMes() {
+    if (mes === 0) { setMes(11); setAno((a) => a - 1); }
+    else setMes(mes - 1);
+  }
+
+  function nextMes() {
+    if (mes === 11) { setMes(0); setAno((a) => a + 1); }
+    else setMes(mes + 1);
+  }
+
+  const grid = useMemo<(DayInfo | null)[]>(() => {
+    const dias = getDiasDoMes(ano, mes);
+    const primeiroDS = dias[0].getDay();
+    const cells: (DayInfo | null)[] = Array(primeiroDS).fill(null);
+    for (const date of dias) {
+      const dayReservas = reservas.filter((r) => sameDay(new Date(r.data), date));
+      cells.push({
+        date, reservas: dayReservas, feriado: getFeriado(date, holidayMap),
+        isToday: sameDay(date, hoje), isPast: date < hoje && !sameDay(date, hoje),
+        isCurrentMonth: true, isForaPeriodo: isForaDoPeriodoLetivo(date),
+        isDomingo: date.getDay() === 0,
+      });
+    }
+    while (cells.length % 7 !== 0) cells.push(null);
+    return cells;
+  }, [ano, mes, reservas, holidayMap]);
+
+  const totalFeriados = useMemo(() =>
+    getDiasDoMes(ano, mes).filter((d) => getFeriado(d, holidayMap)).length,
+  [ano, mes, holidayMap]);
+
+  return (
+    <Card className="border-brand-teal/10 bg-white/85 rounded-tl-none">
+      {selectedDay && (
+        <DayPanel info={selectedDay} onClose={() => setSelectedDay(null)} />
+      )}
+
+      <CardContent className="p-6">
+        {/* Filtros */}
+        <div className="mb-6 grid gap-3 rounded-[24px] border border-brand-teal/10 bg-brand-mist/10 p-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Sala</label>
+            <select
+              value={filtroSala}
+              onChange={(e) => setFiltroSala(e.target.value)}
+              className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
+            >
+              <option value="">Todas as salas</option>
+              {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Período</label>
+            <select
+              value={filtroPeriodo}
+              onChange={(e) => setFiltroPeriodo(e.target.value)}
+              className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
+            >
+              {PERIODOS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Semestre</label>
+            <input
+              type="text"
+              placeholder="Ex: 2026.1"
+              value={filtroSemestre}
+              onChange={(e) => setFiltroSemestre(e.target.value)}
+              className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
+            />
+          </div>
+          <div className="flex items-end">
+            <Button variant="secondary" onClick={() => void load()} className="w-full" disabled={loading}>
+              <RefreshCcw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Carregando…' : 'Atualizar'}
+            </Button>
+          </div>
+        </div>
+
+        {/* Calendário */}
+        <div className="rounded-[24px] border border-brand-teal/10 bg-white/60 p-5">
+          {semestreDoMes ? (
+            <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-brand-teal/15 bg-brand-teal/5 px-4 py-3">
+              <BookOpen className="h-4 w-4 flex-shrink-0 text-brand-teal" />
+              <span className="text-sm font-semibold text-brand-ink">{semestreDoMes.nome}</span>
+              <span className="text-muted-foreground/40">|</span>
+              <span className="text-sm text-muted-foreground">
+                Aulas: {new Date(semestreDoMes.inicioAulas + 'T12:00:00').toLocaleDateString('pt-BR')}
+                {' '}–{' '}
+                {new Date(semestreDoMes.terminoAulas + 'T12:00:00').toLocaleDateString('pt-BR')}
+              </span>
+            </div>
+          ) : (
+            <div className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <BookOpen className="h-4 w-4 flex-shrink-0 text-slate-400" />
+              <p className="text-sm text-slate-500">Este mês está fora do período letivo.</p>
+            </div>
+          )}
+
+          <div className="mb-6 flex items-center justify-between">
+            <button onClick={prevMes} className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-teal/15 text-brand-teal transition hover:bg-brand-teal hover:text-white">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div className="text-center">
+              <h2 className="font-serif text-2xl font-bold text-brand-ink">{MESES[mes]} {ano}</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {reservas.length} reserva{reservas.length !== 1 ? 's' : ''} aprovada{reservas.length !== 1 ? 's' : ''}
+                {' · '}{totalFeriados} dia{totalFeriados !== 1 ? 's' : ''} bloqueado{totalFeriados !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <button onClick={nextMes} className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-teal/15 text-brand-teal transition hover:bg-brand-teal hover:text-white">
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-brand-teal/15 ring-1 ring-brand-teal/30" />Reserva aprovada</span>
+            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-rose-100 ring-1 ring-rose-200" />Feriado nacional</span>
+            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-amber-100 ring-1 ring-amber-200" />Recesso acadêmico</span>
+            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-brand-teal" />Hoje</span>
+          </div>
+
+          {error && (
+            <div className="mb-4 rounded-2xl border border-brand-wine/20 bg-brand-wine/5 px-4 py-3 text-sm text-brand-wine">{error}</div>
+          )}
+
+          <div className="mb-2 grid grid-cols-7 gap-1">
+            {SEMANAS.map((s, i) => (
+              <div key={s} className={`py-2 text-center text-xs font-semibold uppercase tracking-[0.14em] ${i === 0 ? 'text-slate-400' : 'text-muted-foreground'}`}>{s}</div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {grid.map((info, idx) =>
+              info ? (
+                <DayCell key={isoDate(info.date)} info={info} onClick={() => setSelectedDay(info)} />
+              ) : (
+                <div key={`empty-${idx}`} className="min-h-[88px]" />
+              )
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-brand-teal/10 bg-white/80 px-5 py-4 text-sm text-muted-foreground">
+          <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-teal" />
+          <p>Apenas reservas com status <strong className="text-brand-ink">Aprovada</strong> aparecem no calendário. Feriados e recessos são bloqueados automaticamente.</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
