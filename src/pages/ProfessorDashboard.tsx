@@ -1,19 +1,22 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { CalendarDays, CalendarPlus2, History, LogOut } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import { Toast, useToast } from '../components/Toast';
+import { SolicitarReservaInline } from './SolicitarReservaPage';
+import { HistoricoReservasInline } from './HistoricoReservasPage';
+import { CalendarioInline } from './CalendarioPage';
+
+type Tab = 'solicitar' | 'historico' | 'calendario';
 
 export function ProfessorDashboard() {
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
   const { unreadNotifications, markAllAsRead } = useNotifications();
   const { toasts, addToast, dismiss } = useToast();
+  const [tab, setTab] = useState<Tab>('solicitar');
 
-  // Show a toast for each unread notification and then mark them as read
   useEffect(() => {
     if (unreadNotifications.length === 0) return;
 
@@ -34,27 +37,28 @@ export function ProfessorDashboard() {
   return (
     <div className="min-h-screen bg-transparent">
       <div className="container py-8">
-        <div className="rounded-[32px] border border-brand-teal/10 bg-white/85 p-8 shadow-panel">
+        {/* Header */}
+        <div className="mb-8 rounded-[32px] border border-black/5 bg-gradient-to-r from-brand-ink via-brand-teal to-brand-teal p-8 text-white shadow-panel">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-4">
-              <Badge className="w-fit" variant="default">
+              <Badge className="w-fit bg-white/12 text-white" variant="subtle">
                 Área do professor
               </Badge>
               <div>
-                <h1 className="font-serif text-4xl leading-tight text-brand-ink md:text-5xl">
-                  Sua rotina acadêmica em um painel claro e direto.
+                <h1 className="font-serif text-4xl leading-tight md:text-5xl">
+                  Sua rotina acadêmica em um painel claro.
                 </h1>
-                <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-                  Consulte reservas, acompanhe salas disponíveis e organize solicitações sem ruído visual nem excesso de etapas.
+                <p className="mt-3 max-w-2xl text-base leading-7 text-white/75">
+                  Solicite reservas, acompanhe seu histórico e consulte o calendário de disponibilidade — tudo aqui.
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-full border border-brand-teal/10 bg-brand-mist/30 px-4 py-2 text-sm text-brand-ink">
+              <div className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm">
                 Professor: <span className="font-semibold">{user?.name}</span>
               </div>
-              <Button onClick={signOut} variant="secondary">
+              <Button className="bg-white text-brand-teal hover:bg-white/90" onClick={signOut} variant="outline">
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair
               </Button>
@@ -62,30 +66,54 @@ export function ProfessorDashboard() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3 rounded-[28px] border border-brand-teal/10 bg-white/80 px-6 py-5 shadow-panel">
-          <div className="flex-1 space-y-1">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-teal">Fluxo de reservas</p>
-            <p className="text-base text-brand-ink">Clique para abrir a página de solicitação e preencher o formulário separado.</p>
-          </div>
+        {/* Tabs */}
+        <div className="mt-0 flex gap-2 border-b border-brand-teal/15 pb-0">
+          <button
+            id="tab-solicitar"
+            className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
+              tab === 'solicitar'
+                ? 'bg-white border border-b-white border-brand-teal/15 text-brand-ink -mb-px shadow-sm'
+                : 'text-muted-foreground hover:text-brand-ink'
+            }`}
+            onClick={() => setTab('solicitar')}
+          >
+            <CalendarPlus2 className="inline mr-2 h-4 w-4" />
+            Solicitar Reserva
+          </button>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button onClick={() => navigate('/professor/reservas')} size="lg">
-              <CalendarPlus2 className="mr-2 h-4 w-4" />
-              Solicitar reserva
-            </Button>
+          <button
+            id="tab-historico"
+            className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
+              tab === 'historico'
+                ? 'bg-white border border-b-white border-brand-teal/15 text-brand-ink -mb-px shadow-sm'
+                : 'text-muted-foreground hover:text-brand-ink'
+            }`}
+            onClick={() => setTab('historico')}
+          >
+            <History className="inline mr-2 h-4 w-4" />
+            Histórico de Reservas
+          </button>
 
-            <Button onClick={() => navigate('/professor/historicoreservas')} size="lg" variant="outline">
-              <History className="mr-2 h-4 w-4" />
-              Histórico de reservas
-            </Button>
-
-            <Button onClick={() => navigate('/professor/calendario')} size="lg" variant="outline">
-              <CalendarDays className="mr-2 h-4 w-4" />
-              Ver calendário
-            </Button>
-          </div>
+          <button
+            id="tab-calendario"
+            className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
+              tab === 'calendario'
+                ? 'bg-white border border-b-white border-brand-teal/15 text-brand-ink -mb-px shadow-sm'
+                : 'text-muted-foreground hover:text-brand-ink'
+            }`}
+            onClick={() => setTab('calendario')}
+          >
+            <CalendarDays className="inline mr-2 h-4 w-4" />
+            Calendário
+          </button>
         </div>
+
+        {/* Conteúdo das abas */}
+        {tab === 'solicitar' && <SolicitarReservaInline />}
+        {tab === 'historico' && <HistoricoReservasInline />}
+        {tab === 'calendario' && <CalendarioInline />}
       </div>
+
       <Toast toasts={toasts} onDismiss={dismiss} />
     </div>
   );

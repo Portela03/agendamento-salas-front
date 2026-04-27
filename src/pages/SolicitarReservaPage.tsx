@@ -589,3 +589,305 @@ function Field({ children, htmlFor, label }: { children: ReactNode; htmlFor: str
     </label>
   );
 }
+
+// ── Versão inline para uso dentro de abas ─────────────────────────────────────
+
+export function SolicitarReservaInline() {
+  const now = new Date();
+
+  const [mesAtual, setMesAtual] = useState(now.getMonth());
+  const [anoAtual, setAnoAtual] = useState(now.getFullYear());
+
+  const [classesDisponiveis, setClassesDisponiveis] = useState<ClassItem[]>([]);
+  const [reservasMes, setReservasMes] = useState<Reserva[]>([]);
+
+  const [salaId, setSalaId] = useState('');
+  const [dataSelecionada, setDataSelecionada] = useState('');
+  const [horarioInicio, setHorarioInicio] = useState('');
+  const [horarioFim, setHorarioFim] = useState('');
+  const [turma, setTurma] = useState('');
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [loadingCalendar, setLoadingCalendar] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const nowLocal = new Date();
+  const nowMinutes = nowLocal.getHours() * 60 + nowLocal.getMinutes();
+
+  const inicioMin = useMemo(() => toMinutes(horarioInicio), [horarioInicio]);
+  const fimMin = useMemo(() => toMinutes(horarioFim), [horarioFim]);
+  const intervaloPreenchido = horarioInicio.length > 0 && horarioFim.length > 0;
+  const intervaloValido = inicioMin !== null && fimMin !== null && inicioMin < fimMin;
+
+  const holidayMapMes = useMemo(() => buildHolidayMap(anoAtual), [anoAtual]);
+
+  const feriadoAviso = useMemo(() => {
+    if (!dataSelecionada) return null;
+    const selectedDate = parseIsoDate(dataSelecionada);
+    if (selectedDate.getDay() === 0) return { label: 'Domingo', tipo: 'academico' as const };
+    const holidayMap = buildHolidayMap(selectedDate.getFullYear());
+    return getFeriado(selectedDate, holidayMap);
+  }, [dataSelecionada]);
+
+  const loadReservasMes = useCallback(async () => {
+    try {
+      setLoadingCalendar(true);
+      const result = await fetchCalendario({ mes: mesAtual + 1, ano: anoAtual, incluirAguardando: true });
+      setReservasMes(result);
+    } catch {
+      setError('Nao foi possivel carregar as reservas para calcular a disponibilidade.');
+    } finally {
+      setLoadingCalendar(false);
+    }
+  }, [anoAtual, mesAtual]);
+
+  useEffect(() => {
+    async function loadClasses() {
+      try {
+        setLoadingClasses(true);
+        const result = await listAvaiables();
+        setClassesDisponiveis(result);
+      } catch {
+        setError('Nao foi possivel carregar as salas disponiveis.');
+      } finally {
+        setLoadingClasses(false);
+      }
+    }
+    void loadClasses();
+  }, []);
+
+  useEffect(() => { void loadReservasMes(); }, [loadReservasMes]);
+
+  const diasDoMes = useMemo(() => getDiasDoMes(anoAtual, mesAtual), [anoAtual, mesAtual]);
+  const primeiroDiaSemana = diasDoMes[0]?.getDay() ?? 0;
+
+  const hojeZerado = useMemo(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
+  }, []);
+
+  const getSalasDisponiveisNoDia = useCallback(
+    (date: Date): ClassItem[] => {
+      const feriado = getFeriado(date, holidayMapMes);
+      const dateZero = new Date(date); dateZero.setHours(0, 0, 0, 0);
+      if (date.getDay() === 0 || !!feriado || dateZero < hojeZerado) return [];
+      const reservasNoDia = reservasMes.filter((reserva) => {
+        const reservaDate = new Date(reserva.data);
+        return sameDay(reservaDate, date) && reserva.status !== 'REJEITADA';
+      });
+      if (intervaloValido && inicioMin !== null && fimMin !== null && isSameDate(date, nowLocal)) {
+        if (fimMin <= nowMinutes || inicioMin <= nowMinutes) return [];
+      }
+      if (!intervaloValido || inicioMin === null || fimMin === null) return classesDisponiveis;
+      return classesDisponiveis.filter((sala) => {
+        const reservasDaSala = reservasNoDia.filter((reserva) => reserva.salaId === sala.id);
+        if (reservasDaSala.length === 0) return true;
+        return reservasDaSala.every((reserva) => {
+          const intervalo = resolveReservaInterval(reserva);
+          if (!intervalo) return false;
+          return !hasIntervalOverlap(inicioMin, fimMin, intervalo.inicio, intervalo.fim);
+        });
+      });
+    },
+    [classesDisponiveis, fimMin, holidayMapMes, hojeZerado, inicioMin, intervaloValido, reservasMes]
+  );
+
+  const disponibilidadePorDia = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const dia of diasDoMes) { map.set(toIsoDate(dia), getSalasDisponiveisNoDia(dia).length); }
+    return map;
+  }, [diasDoMes, getSalasDisponiveisNoDia]);
+
+  const salasNoDiaSelecionado = useMemo(() => {
+    if (!dataSelecionada) return [];
+    return getSalasDisponiveisNoDia(parseIsoDate(dataSelecionada));
+  }, [dataSelecionada, getSalasDisponiveisNoDia]);
+
+  useEffect(() => {
+    if (!salaId || !dataSelecionada) return;
+    if (!salasNoDiaSelecionado.some((sala) => sala.id === salaId)) setSalaId('');
+  }, [dataSelecionada, salaId, salasNoDiaSelecionado]);
+
+  function prevMes() {
+    if (mesAtual === 0) { setMesAtual(11); setAnoAtual((a) => a - 1); }
+    else setMesAtual((a) => a - 1);
+  }
+
+  function nextMes() {
+    if (mesAtual === 11) { setMesAtual(0); setAnoAtual((a) => a + 1); }
+    else setMesAtual((a) => a + 1);
+  }
+
+  function onSelectDia(date: Date) {
+    setDataSelecionada(toIsoDate(date));
+    setError('');
+    setSuccess('');
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(''); setSuccess('');
+    if (!turma.trim()) { setError('Informe a turma.'); return; }
+    if (!intervaloPreenchido || !intervaloValido) { setError('Informe horario de inicio e termino validos.'); return; }
+    if (!dataSelecionada) { setError('Selecione um dia no calendario.'); return; }
+    const dataSelecionadaDate = parseIsoDate(dataSelecionada);
+    if (isSameDate(dataSelecionadaDate, nowLocal) && inicioMin !== null && inicioMin <= nowMinutes) {
+      setError('Para o dia de hoje, o horario de inicio deve ser maior que o horario atual.'); return;
+    }
+    if (feriadoAviso) { setError(`Nao e possivel agendar em feriado/recesso: ${feriadoAviso.label}.`); return; }
+    if (!salaId) { setError('Selecione uma sala disponivel para o dia escolhido.'); return; }
+    if (!salasNoDiaSelecionado.some((sala) => sala.id === salaId)) {
+      setError('A sala selecionada nao esta mais disponivel no horario escolhido.'); return;
+    }
+    try {
+      setIsSubmitting(true);
+      const [year, month, day] = dataSelecionada.split('-').map(Number);
+      await api.post('/reservas', {
+        classId: salaId,
+        data: new Date(year, month - 1, day, 12, 0, 0).toISOString(),
+        horarioInicio, horarioFim, turma: turma.trim(),
+      });
+      setSuccess('Solicitacao enviada com sucesso.');
+      setSalaId(''); setDataSelecionada(''); setHorarioInicio(''); setHorarioFim(''); setTurma('');
+      await loadReservasMes();
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Nao foi possivel enviar a solicitacao agora.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="rounded-b-[24px] rounded-tr-[24px] border border-brand-teal/10 bg-white/85 p-6 shadow-panel">
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Field htmlFor="turma-inline" label="Turma">
+            <input id="turma-inline" className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-teal/30" placeholder="Ex: DSM 4A" required value={turma} onChange={(e) => setTurma(e.target.value)} />
+          </Field>
+          <Field htmlFor="horarioInicio-inline" label="Horário de início">
+            <input id="horarioInicio-inline" type="time" className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal/30" required value={horarioInicio} onChange={(e) => setHorarioInicio(e.target.value)} />
+          </Field>
+          <Field htmlFor="horarioFim-inline" label="Horário de término">
+            <input id="horarioFim-inline" type="time" className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal/30" required value={horarioFim} onChange={(e) => setHorarioFim(e.target.value)} />
+          </Field>
+        </div>
+
+        {/* Calendário de seleção */}
+        <div className="rounded-[24px] border border-brand-teal/10 bg-white/85 p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm font-semibold text-brand-ink">Selecione o dia no calendário</p>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={prevMes} className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand-teal/20 text-brand-teal transition hover:bg-brand-teal hover:text-white">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <p className="min-w-[150px] text-center text-sm font-semibold text-brand-ink">{MESES[mesAtual]} {anoAtual}</p>
+              <button type="button" onClick={nextMes} className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand-teal/20 text-brand-teal transition hover:bg-brand-teal hover:text-white">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-2 grid grid-cols-7 gap-1">
+            {SEMANAS.map((d) => (
+              <div key={d} className="py-2 text-center text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{d}</div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: primeiroDiaSemana }).map((_, idx) => <div key={`empty-${idx}`} className="min-h-[88px]" />)}
+            {diasDoMes.map((dia) => {
+              const iso = toIsoDate(dia);
+              const feriado = getFeriado(dia, holidayMapMes);
+              const diaZero = new Date(dia); diaZero.setHours(0, 0, 0, 0);
+              const isDomingo = dia.getDay() === 0;
+              const isPast = diaZero < hojeZerado;
+              const bloqueado = isDomingo || !!feriado || isPast;
+              const isSelected = dataSelecionada === iso;
+              const disponiveis = disponibilidadePorDia.get(iso) ?? 0;
+              return (
+                <button key={iso} type="button" disabled={bloqueado || loadingClasses} onClick={() => onSelectDia(dia)}
+                  className={`min-h-[88px] rounded-xl border p-2 text-left transition ${
+                    isSelected ? 'border-brand-teal bg-brand-teal/10 ring-2 ring-brand-teal/20'
+                    : bloqueado ? 'border-slate-200 bg-slate-50 text-muted-foreground/60'
+                    : 'border-brand-teal/10 bg-white hover:bg-brand-mist/20'
+                  }`}
+                >
+                  <p className="text-sm font-semibold">{dia.getDate()}</p>
+                  {bloqueado ? (
+                    <p className="mt-1 text-[10px] leading-tight">{isPast ? 'Dia passado' : isDomingo ? 'Domingo' : 'Feriado'}</p>
+                  ) : loadingCalendar ? (
+                    <p className="mt-1 text-[10px] leading-tight">Carregando...</p>
+                  ) : (
+                    <p className="mt-1 line-clamp-1 text-[10px] font-semibold text-brand-teal">
+                      {disponiveis} sala{disponiveis !== 1 ? 's' : ''} disponível{disponiveis !== 1 ? 'eis' : ''}
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Salas disponíveis no dia selecionado */}
+        {dataSelecionada && (
+          <div className="rounded-[24px] border border-brand-teal/10 bg-brand-mist/10 p-4">
+            <p className="mb-2 text-sm font-semibold text-brand-ink">
+              Salas disponíveis em {parseIsoDate(dataSelecionada).toLocaleDateString('pt-BR')}
+            </p>
+            {loadingClasses ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <LoaderCircle className="h-4 w-4 animate-spin" /> Carregando salas...
+              </div>
+            ) : salasNoDiaSelecionado.length === 0 ? (
+              <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <CalendarDays className="h-4 w-4" /> Nenhuma sala disponível nesse dia para o horário informado.
+              </div>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2">
+                {salasNoDiaSelecionado.map((sala) => (
+                  <button key={sala.id} type="button" onClick={() => setSalaId(sala.id)}
+                    className={`rounded-xl border p-3 text-left transition ${
+                      sala.id === salaId ? 'border-brand-teal bg-brand-teal/10' : 'border-brand-teal/15 bg-white hover:bg-brand-mist/20'
+                    }`}
+                  >
+                    <p className="font-semibold text-brand-ink">{sala.name}</p>
+                    <p className="text-xs text-muted-foreground">{sala.type} - Capacidade: {sala.capacity}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Avisos */}
+        {feriadoAviso && (
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <div>
+              <p className="font-semibold">{feriadoAviso.label === 'Domingo' ? 'Domingo' : feriadoAviso.tipo === 'academico' ? 'Recesso Acadêmico' : 'Feriado Nacional'}</p>
+              <p>{feriadoAviso.label === 'Domingo' ? 'Aos domingos não há aulas. Selecione outro dia.' : `${feriadoAviso.label} — agendamentos nesta data são bloqueados.`}</p>
+            </div>
+          </div>
+        )}
+        {!intervaloValido && intervaloPreenchido && (
+          <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <p>A hora de término deve ser maior que a hora de início.</p>
+          </div>
+        )}
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        {success && <p className="text-sm text-green-600">{success}</p>}
+
+        <Button
+          className="group"
+          disabled={isSubmitting || loadingClasses || loadingCalendar || classesDisponiveis.length === 0 || !!feriadoAviso || !intervaloValido || !dataSelecionada || !salaId || !turma.trim()}
+          type="submit"
+        >
+          {isSubmitting ? 'Enviando...' : 'Solicitar reserva'}
+          <Send className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        </Button>
+      </form>
+    </div>
+  );
+}
