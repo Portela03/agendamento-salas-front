@@ -27,12 +27,30 @@ export interface PendingUser {
   createdAt: string;
 }
 
+export interface ManagedUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  approvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CreateUserResponse {
   user: Omit<UserData, 'role'> & { role: UserRole; createdAt: string };
 }
 
 export interface RegisterUserResponse {
   user: Omit<UserData, 'role'> & { role: UserRole; status: 'PENDENTE'; createdAt: string };
+}
+
+export interface UpdateUserPayload {
+  name?: string;
+  email?: string;
+  role?: UserRole;
+  status?: UserStatus;
 }
 
 /**
@@ -55,11 +73,30 @@ export const userService = {
     return data;
   },
 
+  listAll: async (): Promise<{ users: ManagedUser[] }> => {
+    const { data } = await api.get<{ users: ManagedUser[] }>('/users');
+    return data;
+  },
+
+  update: async (userId: string, payload: UpdateUserPayload): Promise<{ user: ManagedUser }> => {
+    const { data } = await api.put<{ user: ManagedUser }>(`/users/${userId}`, payload);
+    return data;
+  },
+
+  toggleStatus: async (userId: string): Promise<{ user: ManagedUser }> => {
+    const { data } = await api.patch<{ user: ManagedUser }>(`/users/${userId}/status`);
+    return data;
+  },
+
   approve: async (userId: string): Promise<void> => {
     await api.patch(`/users/${userId}/approve`);
   },
 
   reject: async (userId: string): Promise<void> => {
     await api.delete(`/users/${userId}/reject`);
+  },
+
+  remove: async (userId: string): Promise<void> => {
+    await api.delete(`/users/${userId}`);
   },
 };
