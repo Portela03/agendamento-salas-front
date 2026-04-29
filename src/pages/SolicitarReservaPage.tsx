@@ -819,9 +819,9 @@ export function SolicitarReservaInline() {
                   ) : loadingCalendar ? (
                     <p className="mt-1 text-[10px] leading-tight">Carregando...</p>
                   ) : (
-                    <p className="mt-1 line-clamp-1 text-[10px] font-semibold text-brand-teal">
-                      {disponiveis} sala{disponiveis !== 1 ? 's' : ''} disponível{disponiveis !== 1 ? 'eis' : ''}
-                    </p>
+                        <p className="mt-1 line-clamp-1 text-[10px] font-semibold text-brand-teal">
+                          {disponiveis} {disponiveis === 1 ? 'sala disponível' : 'salas disponíveis'}
+                        </p>
                   )}
                 </button>
               );
