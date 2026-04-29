@@ -18,11 +18,14 @@ export function LoginPage() {
   const [role, setRole] = useState<UserRole>('PROFESSOR');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError('');
     setSuccess('');
+    setIsSubmitting(true);
 
     try {
       if (isRegisterMode) {
@@ -57,8 +60,13 @@ export function LoginPage() {
           ? 'Não foi possível enviar a solicitação agora. Tente novamente.'
           : 'Não foi possível entrar agora. Tente novamente.',
       );
+    } finally {
+      setIsSubmitting(false);
     }
   }
+
+  const isBusy = isLoading || isSubmitting;
+
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -185,11 +193,11 @@ export function LoginPage() {
                 <div className="space-y-3 pt-2">
                   <Button
                     className="group w-full transition-all duration-200 active:scale-[0.98]"
-                    disabled={isLoading}
+                    disabled={isBusy}
                     size="lg"
                     type="submit"
                   >
-                    {isLoading ? (
+                    {isBusy ? (
                       <>
                         <svg
                           className="mr-2 h-4 w-4 animate-spin"

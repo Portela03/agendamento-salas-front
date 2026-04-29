@@ -274,7 +274,6 @@ export function CalendarioPage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [filtroSala, setFiltroSala] = useState('');
   const [filtroPeriodo, setFiltroPeriodo] = useState('');
-  const [filtroSemestre, setFiltroSemestre] = useState('');
 
   const [selectedDay, setSelectedDay] = useState<DayInfo | null>(null);
 
@@ -307,7 +306,6 @@ export function CalendarioPage() {
         ano,
         classId: filtroSala || undefined,
         periodo: filtroPeriodo || undefined,
-        semestre: filtroSemestre || undefined,
       });
       setReservas(data);
     } catch {
@@ -315,7 +313,7 @@ export function CalendarioPage() {
     } finally {
       setLoading(false);
     }
-  }, [mes, ano, filtroSala, filtroPeriodo, filtroSemestre]);
+  }, [mes, ano, filtroSala, filtroPeriodo]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -464,20 +462,6 @@ export function CalendarioPage() {
             </select>
           </div>
 
-          <div>
-            <label id="label-filtro-semestre" className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Semestre
-            </label>
-            <input
-              id="filtro-semestre"
-              aria-labelledby="label-filtro-semestre"
-              type="text"
-              placeholder="Ex: 2026.1"
-              value={filtroSemestre}
-              onChange={(e) => setFiltroSemestre(e.target.value)}
-              className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
-            />
-          </div>
 
           <div className="flex items-end">
             <Button
@@ -635,8 +619,6 @@ export function CalendarioInline() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [filtroSala, setFiltroSala] = useState('');
   const [filtroPeriodo, setFiltroPeriodo] = useState('');
-  const [filtroSemestre, setFiltroSemestre] = useState('');
-
   const [selectedDay, setSelectedDay] = useState<DayInfo | null>(null);
 
   const semestreDoMes = useMemo((): Semestre | null => {
@@ -659,7 +641,6 @@ export function CalendarioInline() {
         ano,
         classId: filtroSala || undefined,
         periodo: filtroPeriodo || undefined,
-        semestre: filtroSemestre || undefined,
       });
       setReservas(data);
     } catch {
@@ -667,7 +648,7 @@ export function CalendarioInline() {
     } finally {
       setLoading(false);
     }
-  }, [mes, ano, filtroSala, filtroPeriodo, filtroSemestre]);
+  }, [mes, ano, filtroSala, filtroPeriodo]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -733,14 +714,7 @@ export function CalendarioInline() {
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Semestre</label>
-            <input
-              type="text"
-              placeholder="Ex: 2026.1"
-              value={filtroSemestre}
-              onChange={(e) => setFiltroSemestre(e.target.value)}
-              className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
-            />
+            
           </div>
           <div className="flex items-end">
             <Button variant="secondary" onClick={() => void load()} className="w-full" disabled={loading}>

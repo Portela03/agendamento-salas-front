@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  AlertTriangle,
   ArrowLeft,
   Building2,
   FlaskConical,
@@ -8,6 +9,8 @@ import {
   Mic2,
   PencilLine,
   RefreshCcw,
+  Trash2,
+  X,
 } from 'lucide-react';
 
 import { Badge } from '../components/ui/badge';
@@ -16,6 +19,7 @@ import { Input } from '../components/ui/input';
 import { Select } from '../components/ui/select';
 import {
   createClass,
+  deleteClass,
   listClasses,
   updateClass,
   type ClassItem,
@@ -64,6 +68,16 @@ export default function ClassManagementPage() {
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [isCapacityFocused, setIsCapacityFocused] = useState(false);
+
+  const [deleteTarget, setDeleteTarget] = useState<ClassItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const capacityDisplay = isCapacityFocused
+    ? form.capacity
+    : form.capacity
+      ? `${form.capacity} pessoas`
+      : '';
 
   const isEditing = Boolean(editingId);
 
@@ -155,6 +169,25 @@ export default function ClassManagementPage() {
     }
   }
 
+  async function handleDeleteConfirmed() {
+    if (!deleteTarget) return;
+
+    try {
+      setDeleting(true);
+      await deleteClass(deleteTarget.id);
+      setFeedback({ type: 'success', text: 'Sala excluída com sucesso.' });
+
+      if (editingId === deleteTarget.id) resetForm();
+      setDeleteTarget(null);
+      await loadData(false);
+    } catch (err: any) {
+      const message = err?.response?.data?.message ?? 'Erro ao excluir sala.';
+      setFeedback({ type: 'error', text: message });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-transparent">
       <div className="container py-8 space-y-8">
@@ -195,7 +228,7 @@ export default function ClassManagementPage() {
               Preencha os campos para {isEditing ? 'atualizar' : 'cadastrar'}.
             </p>
 
-            <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+            <form className="mt-5 space-y-4" onSubmit={handleSubmit} noValidate>
               <div>
                 <label className="mb-1 block text-sm font-semibold text-brand-ink">Nome *</label>
                 <Input
@@ -221,10 +254,15 @@ export default function ClassManagementPage() {
               <div>
                 <label className="mb-1 block text-sm font-semibold text-brand-ink">Capacidade *</label>
                 <Input
-                  type="number"
-                  min={1}
-                  value={form.capacity}
-                  onChange={(e) => onChange('capacity', e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  value={capacityDisplay}
+                  onFocus={() => setIsCapacityFocused(true)}
+                  onBlur={() => setIsCapacityFocused(false)}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '');
+                    onChange('capacity', digits);
+                  }}
                   placeholder="Ex: 40"
                   className={submitted && errors.capacity ? 'border-red-500 focus-visible:ring-red-200' : ''}
                 />
@@ -308,16 +346,28 @@ export default function ClassManagementPage() {
                       <p>Descrição: {item.description?.trim() ? item.description : '—'}</p>
                     </div>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={() => handleEdit(item)}
-                    >
-                      <PencilLine className="mr-2 h-4 w-4" />
-                      Editar
-                    </Button>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(item)}
+                      >
+                        <PencilLine className="mr-2 h-4 w-4" />
+                        Editar
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setDeleteTarget(item)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir
+                      </Button>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -325,6 +375,46 @@ export default function ClassManagementPage() {
           </section>
         </div>
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-red-100 p-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+
+              <div className="flex-1">
+                <div className="flex items-start justify-between gap-4">
+                  <h3 className="text-lg font-bold text-brand-ink">Confirmar exclusão</h3>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(null)}
+                    className="rounded-full p-1 text-muted-foreground hover:bg-muted"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Tem certeza que deseja excluir a sala <strong>{deleteTarget.name}</strong>?
+                  <br />
+                  Todas as reservas dela serão apagadas no processo.
+                </p>
+
+                <div className="mt-6 flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => void handleDeleteConfirmed()} disabled={deleting}>
+                    {deleting ? 'Excluindo...' : 'Confirmar exclusão'}
+                  </Button>
+                  <Button type="button" onClick={() => setDeleteTarget(null)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -169,7 +169,6 @@ export function CoordinatorDashboard() {
   const { unreadNotifications, markAllAsRead } = useNotifications();
   const { toasts, addToast, dismiss } = useToast();
 
-
   // Show toast for each unread notification then mark all as read
   useEffect(() => {
     if (unreadNotifications.length === 0) return;
@@ -194,11 +193,12 @@ export function CoordinatorDashboard() {
   // Filtros
   const [filtroStatus, setFiltroStatus] = useState<'' | ReservaStatus>('');
   const [filtroPeriodo, setFiltroPeriodo] = useState('');
+  const [filtroTipoSala, setFiltroTipoSala] = useState<'' | ClassItem['type']>('');
 
   // Modal rejeitar
   const [rejeitarId, setRejeitarId] = useState<string | null>(null);
 
-    // Salas
+  // Salas
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [classesLoading, setClassesLoading] = useState(false);
   const [classesError, setClassesError] = useState('');
@@ -235,7 +235,7 @@ export function CoordinatorDashboard() {
     }
   }, []);
 
- const loadClasses = useCallback(async () => {
+  const loadClasses = useCallback(async () => {
     try {
       setClassesLoading(true);
       setClassesError('');
@@ -309,6 +309,10 @@ export function CoordinatorDashboard() {
     if (filtroPeriodo && r.periodo !== filtroPeriodo) return false;
     return true;
   });
+
+  const classesFiltradas = filtroTipoSala
+    ? classes.filter((item) => item.type === filtroTipoSala)
+    : classes;
 
   const totalAguardando = reservas.filter((r) => r.status === 'AGUARDANDO').length;
   const totalAprovadas = reservas.filter((r) => r.status === 'APROVADA').length;
@@ -492,6 +496,7 @@ export function CoordinatorDashboard() {
                     <option value="noturno">Noturno</option>
                   </Select>
                 </div>
+
                 {(filtroStatus || filtroPeriodo) && (
                   <div className="flex items-end">
                     <Button
@@ -674,11 +679,6 @@ export function CoordinatorDashboard() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => setOnlyAvailableClasses((prev) => !prev)}>
-                  <Filter className="mr-2 h-4 w-4" />
-                  {onlyAvailableClasses ? 'Mostrando disponíveis' : 'Apenas disponíveis'}
-                </Button>
-
                 <Button onClick={() => void loadClasses()} variant="secondary">
                   <RefreshCcw className="mr-2 h-4 w-4" />
                   Atualizar
@@ -694,24 +694,59 @@ export function CoordinatorDashboard() {
             </CardHeader>
 
             <CardContent className="space-y-4">
+              {/* Filtro de tipo */}
+              <div className="flex flex-wrap gap-3 rounded-2xl border border-brand-teal/10 bg-brand-mist/20 p-4">
+                <div className="flex-1 min-w-[160px]">
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Tipo
+                  </label>
+                  <Select
+                    value={filtroTipoSala}
+                    onChange={(e) => setFiltroTipoSala(e.target.value as '' | ClassItem['type'])}
+                  >
+                    <option value="">Todos</option>
+                    <option value="SALA">Sala</option>
+                    <option value="LABORATORIO">Laboratório</option>
+                    <option value="AUDITORIO">Auditório</option>
+                  </Select>
+                </div>
+
+                <div className="flex items-end">
+                  <Button variant="outline" onClick={() => setOnlyAvailableClasses((prev) => !prev)}>
+                    <Filter className="mr-2 h-4 w-4" />
+                    {onlyAvailableClasses ? 'Mostrando disponíveis' : 'Apenas disponíveis'}
+                  </Button>
+                </div>
+
+                {filtroTipoSala && (
+                  <div className="flex items-end">
+                    <Button variant="outline" onClick={() => setFiltroTipoSala('')}>
+                      Limpar filtro
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               {classesError && <PanelMessage tone="error">{classesError}</PanelMessage>}
               {classesLoading && <PanelMessage tone="info">Carregando salas...</PanelMessage>}
 
-              {!classesLoading && classes.length === 0 && (
+              {!classesLoading && classesFiltradas.length === 0 && (
                 <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-brand-teal/20 bg-brand-mist/20 px-6 py-12 text-center">
                   <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-teal/10 text-brand-teal">
                     <Building2 className="h-6 w-6" />
                   </div>
                   <h2 className="text-xl font-bold text-brand-ink">Nenhuma sala encontrada</h2>
                   <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-                    Cadastre uma nova sala para começar.
+                    {classes.length === 0
+                      ? 'Cadastre uma nova sala para começar.'
+                      : 'Nenhuma sala corresponde ao filtro selecionado.'}
                   </p>
                 </div>
               )}
 
-              {!classesLoading && classes.length > 0 && (
+              {!classesLoading && classesFiltradas.length > 0 && (
                 <div className="grid gap-3 md:grid-cols-2">
-                  {classes.map((item) => (
+                  {classesFiltradas.map((item) => (
                     <article
                       key={item.id}
                       className="rounded-2xl border border-brand-teal/10 bg-gradient-to-r from-white to-brand-mist/20 p-4"
@@ -734,7 +769,7 @@ export function CoordinatorDashboard() {
                           <TypeIcon type={item.type} />
                           {classTypeLabel(item.type)}
                         </p>
-                        <p>Capacidade: {item.capacity}</p>
+                        <p>Capacidade: {item.capacity} pessoas</p>
                         <p>Descrição: {item.description?.trim() ? item.description : '—'}</p>
                       </div>
                     </article>

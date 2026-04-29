@@ -104,3 +104,7 @@ export async function updateClass(id: string, payload: UpdateClassPayload): Prom
   const { data } = await api.patch(`/class/${id}`, payload, getAuthConfig());
   return normalizeClass(data?.class ?? data);
 }
+
+export async function deleteClass(id: string): Promise<void> {
+  await api.delete(`/class/${id}`, getAuthConfig());
+}
