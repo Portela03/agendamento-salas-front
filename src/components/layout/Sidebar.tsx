@@ -4,7 +4,6 @@ import {
   CalendarDays,
   CalendarPlus2,
   History,
-  LayoutDashboard,
   LogOut,
   Users2,
 } from 'lucide-react';
@@ -16,7 +15,6 @@ interface SidebarProps {
 }
 
 const professorLinks = [
-  { to: '/professor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/professor/reservas', label: 'Solicitar Reserva', icon: CalendarPlus2 },
   { to: '/professor/historicoreservas', label: 'Histórico', icon: History },
   { to: '/professor/calendario', label: 'Calendário', icon: CalendarDays },

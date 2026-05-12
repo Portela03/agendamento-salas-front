@@ -33,7 +33,7 @@ export function App() {
       {/* Protected: Professor only */}
       <Route element={<PrivateRoute allowedRoles={['PROFESSOR']} />}>
         <Route element={<AppLayout />}>
-          <Route path="/professor/dashboard" element={<ProfessorDashboard />} />
+          <Route path="/professor/dashboard" element={<Navigate to="/professor/reservas" replace />} />
           <Route path="/professor/reservas" element={<SolicitarReservaPage />} />
           <Route path="/professor/historicoreservas" element={<HistoricoReservasPage />} />
           <Route path="/professor/calendario" element={<CalendarioPage />} />
