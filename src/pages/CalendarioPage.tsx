@@ -4,16 +4,12 @@ import {
   ChevronRight,
   CalendarDays,
   Info,
-  LogOut,
   RefreshCcw,
   X,
   BookOpen,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { useAuth } from '../hooks/useAuth';
 import { fetchCalendario } from '../services/calendarService';
 import { listClasses, ClassItem } from '../services/classService';
 import { Reserva } from '../services/reservaService';
@@ -260,9 +256,6 @@ function DayCell({
 // ── Page principal ────────────────────────────────────────────────────────────
 
 export function CalendarioPage() {
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
-
   const hoje = new Date();
   const [mes, setMes] = useState(hoje.getMonth()); // 0-indexed
   const [ano, setAno] = useState(hoje.getFullYear());
@@ -375,55 +368,13 @@ export function CalendarioPage() {
     return getDiasDoMes(ano, mes).filter((d) => getFeriado(d, holidayMap)).length;
   }, [ano, mes, holidayMap]);
 
-  const backPath = user?.role === 'COORDENADOR'
-    ? '/coordenador/dashboard'
-    : '/professor/dashboard';
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-transparent">
+    <div className="container py-8">
       {selectedDay && (
         <DayPanel info={selectedDay} onClose={() => setSelectedDay(null)} />
       )}
-
-      <div className="container py-8">
-        {/* Header */}
-        <div className="mb-8 rounded-[32px] border border-black/5 bg-gradient-to-r from-brand-ink via-brand-teal to-brand-teal p-8 text-white shadow-panel">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-4">
-              <Badge className="w-fit bg-white/12 text-white" variant="subtle">
-                Calendário de disponibilidade
-              </Badge>
-              <div>
-                <h1 className="font-serif text-4xl leading-tight md:text-5xl">
-                  Agenda de Salas
-                </h1>
-                <p className="mt-3 max-w-2xl text-base leading-7 text-white/75">
-                  Visualize a disponibilidade das salas mês a mês. Feriados nacionais e
-                  recessos acadêmicos são bloqueados automaticamente.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm">
-                {user?.name}
-              </div>
-              <Button
-                className="bg-white/15 text-white hover:bg-white/25"
-                variant="outline"
-                onClick={() => navigate(backPath)}
-              >
-                ← Voltar
-              </Button>
-              <Button className="bg-white text-brand-teal hover:bg-white/90" onClick={signOut} variant="outline">
-                <LogOut className="mr-2 h-4 w-4" />
-                Sair
-              </Button>
-            </div>
-          </div>
-        </div>
 
         {/* Filtros */}
         <div className="mb-6 grid gap-3 rounded-[24px] border border-brand-teal/10 bg-white/85 p-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -600,7 +551,6 @@ export function CalendarioPage() {
             agendar salas nessas datas.
           </p>
         </div>
-      </div>
     </div>
   );
 }

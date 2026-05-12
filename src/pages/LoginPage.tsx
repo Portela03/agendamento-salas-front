@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useState } from 'react';
-import { ArrowRight, KeyRound, ShieldCheck, UserPlus2 } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, KeyRound, ShieldCheck, UserPlus2 } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -19,6 +19,7 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
 
   async function handleSubmit(event: FormEvent) {
@@ -167,15 +168,27 @@ export function LoginPage() {
                 </Field>
 
                 <Field htmlFor="password" label="Senha">
-                  <Input
-                    id="password"
-                    autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
-                    placeholder="Digite sua senha"
-                    required
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
+                      placeholder="Digite sua senha"
+                      required
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="pr-11"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-brand-ink transition-colors"
+                      onClick={() => setShowPassword((v) => !v)}
+                      tabIndex={-1}
+                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </Field>
 
                 {error && (
