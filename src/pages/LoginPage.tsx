@@ -73,8 +73,9 @@ export function LoginPage() {
     <div className="relative min-h-screen overflow-hidden">
       <div className="absolute inset-0 bg-hero-grid bg-[size:26px_26px] opacity-40" />
       <div className="container relative flex min-h-screen items-center py-10">
-        <div className="grid w-full gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-          <section className="animate-fade-up space-y-8">
+        <div className="grid w-full gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:grid-rows-[auto_auto]">
+          {/* 1 — Intro: mobile primeiro, desktop coluna esquerda linha 1 */}
+          <section className="animate-fade-up space-y-8 lg:col-start-1 lg:row-start-1">
             <Badge className="w-fit border border-brand-teal/10 bg-white/70 px-4 py-2 text-brand-teal shadow-soft" variant="default">
               Fatec Zona Leste • Reserva de Salas
             </Badge>
@@ -88,27 +89,10 @@ export function LoginPage() {
                 mantendo o sistema consistente e pronto para a rotina acadêmica.
               </p>
             </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <FeatureCard
-                description="Solicitação rápida para professores e coordenadores sem abrir mão da triagem institucional."
-                icon={<UserPlus2 className="h-5 w-5" />}
-                title="Cadastro guiado"
-              />
-              <FeatureCard
-                description="Somente o coordenador libera o acesso final, com controle real do fluxo."
-                icon={<ShieldCheck className="h-5 w-5" />}
-                title="Aprovação humana"
-              />
-              <FeatureCard
-                description="Autenticação centralizada com status do usuário respeitado antes do login."
-                icon={<KeyRound className="h-5 w-5" />}
-                title="Entrada segura"
-              />
-            </div>
           </section>
 
-          <Card className="animate-fade-up border-brand-teal/10 bg-white/80">
+          {/* 2 — Card de login: mobile segundo (logo abaixo do título), desktop coluna direita abrangendo as 2 linhas */}
+          <Card className="animate-fade-up border-brand-teal/10 bg-white/80 lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <CardHeader className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <Badge variant={isRegisterMode ? 'pending' : 'default'}>
@@ -250,6 +234,25 @@ export function LoginPage() {
               
             </CardContent>
           </Card>
+
+          {/* 3 — Feature cards: mobile terceiro, desktop coluna esquerda linha 2 */}
+          <div className="animate-fade-up grid gap-4 md:grid-cols-3 lg:col-start-1 lg:row-start-2 lg:self-end">
+            <FeatureCard
+              description="Solicitação rápida para professores e coordenadores sem abrir mão da triagem institucional."
+              icon={<UserPlus2 className="h-5 w-5" />}
+              title="Cadastro guiado"
+            />
+            <FeatureCard
+              description="Somente o coordenador libera o acesso final, com controle real do fluxo."
+              icon={<ShieldCheck className="h-5 w-5" />}
+              title="Aprovação humana"
+            />
+            <FeatureCard
+              description="Autenticação centralizada com status do usuário respeitado antes do login."
+              icon={<KeyRound className="h-5 w-5" />}
+              title="Entrada segura"
+            />
+          </div>
         </div>
       </div>
     </div>
