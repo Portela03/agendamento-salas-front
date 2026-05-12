@@ -18,6 +18,7 @@ import {
   PencilLine,
   Filter,
   Trash2,
+  Settings,
 } from 'lucide-react';
 import { ClassItem, listClasses } from '../services/classService';
 import { Link } from 'react-router-dom';
@@ -31,6 +32,7 @@ import { Reserva, ReservaStatus, reservaService } from '../services/reservaServi
 import { useNotifications } from '../hooks/useNotifications';
 import { Toast, useToast } from '../components/Toast';
 import { CalendarioInline } from './CalendarioPage';
+import { PeriodoInativoProfessorManager } from '../components/PeriodoInativoProfessorManager';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -283,7 +285,7 @@ export function CoordinatorDashboard() {
   const [onlyAvailableClasses, setOnlyAvailableClasses] = useState(false);
 
   // Tab ativa
-  const [tab, setTab] = useState<'usuarios' | 'reservas' | 'salas' | 'calendario'>('reservas');
+  const [tab, setTab] = useState<'usuarios' | 'reservas' | 'salas' | 'calendario' | 'configuracoes'>('reservas');
 
   // ── Loaders ──────────────────────────────────────────────────────────────
 
@@ -590,6 +592,19 @@ export function CoordinatorDashboard() {
           >
             <CalendarDays className="inline mr-2 h-4 w-4" />
             Calendário
+          </button>
+
+          <button
+            id="tab-configuracoes"
+            className={`px-5 py-3 text-sm font-semibold rounded-t-xl transition-colors ${
+              tab === 'configuracoes'
+                ? 'bg-white border border-b-white border-brand-teal/15 text-brand-ink -mb-px shadow-sm'
+                : 'text-muted-foreground hover:text-brand-ink'
+            }`}
+            onClick={() => setTab('configuracoes')}
+          >
+            <Settings className="inline mr-2 h-4 w-4" />
+            Controle de Períodos
           </button>
 
         </div>
@@ -1130,6 +1145,13 @@ export function CoordinatorDashboard() {
         {tab === 'calendario' && (
           <div className="mt-0">
             <CalendarioInline />
+          </div>
+        )}
+
+        {/* ── TAB: CONFIGURAÇÕES ── */}
+        {tab === 'configuracoes' && (
+          <div className="mt-0 space-y-6">
+            <PeriodoInativoProfessorManager />
           </div>
         )}
       </div>
