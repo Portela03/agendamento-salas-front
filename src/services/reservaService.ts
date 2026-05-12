@@ -2,6 +2,14 @@ import { api } from './api';
 
 export type ReservaStatus = 'AGUARDANDO' | 'APROVADA' | 'REJEITADA';
 
+export interface PeriodoInativoProfessor {
+  chave: string;
+  dataInicio: string;
+  dataFim: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Reserva {
   id: string;
   professorId: string;
@@ -39,5 +47,26 @@ export const reservaService = {
   rejeitar: async (id: string, justificativa: string): Promise<Reserva> => {
     const { data } = await api.patch<Reserva>(`/reservas/${id}/rejeitar`, { justificativa });
     return data;
+  },
+
+  obterPeriodoInativoProfessor: async (): Promise<PeriodoInativoProfessor | null> => {
+    try {
+      const { data } = await api.get<PeriodoInativoProfessor | null>('/reservas/periodo-inativo-professor');
+      return data;
+    } catch {
+      return null;
+    }
+  },
+
+  definirPeriodoInativoProfessor: async (dataInicio: string, dataFim: string): Promise<PeriodoInativoProfessor> => {
+    const { data } = await api.put<PeriodoInativoProfessor>('/reservas/periodo-inativo-professor', {
+      dataInicio,
+      dataFim,
+    });
+    return data;
+  },
+
+  removerPeriodoInativoProfessor: async (): Promise<void> => {
+    await api.delete('/reservas/periodo-inativo-professor');
   },
 };
