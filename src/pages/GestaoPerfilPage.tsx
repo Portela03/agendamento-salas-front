@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   CheckCircle2,
   Filter,
@@ -12,6 +12,40 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Select } from '../components/ui/select';
 import { ManagedUser, PendingUser, userService } from '../services/userService';
+
+// ── TruncatedEmail ───────────────────────────────────────────────────────────
+
+function TruncatedEmail({ email }: { email: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useLayoutEffect(() => {
+    if (ref.current) {
+      setIsTruncated(ref.current.scrollWidth > ref.current.clientWidth);
+    }
+  }, [email]);
+
+  return (
+    <div>
+      <div
+        ref={ref}
+        className={`text-sm text-muted-foreground ${expanded ? 'break-all' : 'truncate'}`}
+      >
+        {email}
+      </div>
+      {(isTruncated || expanded) && (
+        <button
+          type="button"
+          className="text-xs text-brand-teal underline"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? 'ver menos' : 'ver mais'}
+        </button>
+      )}
+    </div>
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -229,7 +263,7 @@ export function GestaoPerfilPage() {
   });
 
   return (
-    <div className="container py-8 space-y-6">
+    <div className="container px-4 py-6 sm:py-8 space-y-6">
       {editingUser && (
         <EditUserModal
           user={editingUser}
@@ -242,7 +276,7 @@ export function GestaoPerfilPage() {
       <Card className="border-brand-teal/10 bg-white/85">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle className="text-3xl text-brand-ink">Aprovação de Professores</CardTitle>
+            <CardTitle className="text-xl sm:text-3xl text-brand-ink">Aprovação de Professores</CardTitle>
             <CardDescription>
               Aprove ou recuse os novos cadastros que ainda aguardam liberação.
             </CardDescription>
@@ -274,7 +308,7 @@ export function GestaoPerfilPage() {
               key={pendingUser.id}
               className="flex flex-col gap-4 rounded-[24px] border border-brand-teal/10 bg-gradient-to-r from-white to-brand-mist/20 p-5 md:flex-row md:items-center md:justify-between"
             >
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-lg font-bold text-brand-ink">{pendingUser.name}</h2>
                   <Badge variant="pending">Pendente</Badge>
@@ -282,22 +316,22 @@ export function GestaoPerfilPage() {
                     {pendingUser.role === 'COORDENADOR' ? 'Coordenador' : 'Professor'}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">{pendingUser.email}</p>
+                <p className="break-all text-sm text-muted-foreground">{pendingUser.email}</p>
                 <p className="text-xs uppercase tracking-[0.2em] text-brand-teal/80">
                   Perfil solicitado e aguardando aprovação
                 </p>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex shrink-0 flex-col sm:flex-row gap-2">
                 <Button
-                  className="bg-emerald-600 text-white hover:bg-emerald-700 md:min-w-36"
+                  className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 sm:min-w-36"
                   onClick={() => void handleApproveUser(pendingUser.id)}
                 >
                   <CheckCircle2 className="mr-2 h-4 w-4" />
                   Aprovar acesso
                 </Button>
                 <Button
-                  className="border-rose-200 text-rose-600 hover:bg-rose-50 md:min-w-36"
+                  className="w-full sm:w-auto border-rose-200 text-rose-600 hover:bg-rose-50 sm:min-w-36"
                   variant="outline"
                   onClick={() => void handleRejectUser(pendingUser.id)}
                 >
@@ -314,7 +348,7 @@ export function GestaoPerfilPage() {
       <Card className="border-brand-teal/10 bg-white/85">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle className="text-3xl text-brand-ink">Gestão de Perfis</CardTitle>
+            <CardTitle className="text-xl sm:text-3xl text-brand-ink">Gestão de Perfis</CardTitle>
             <CardDescription>Consulte, edite, ative ou remova perfis direto do banco de dados.</CardDescription>
           </div>
           <Button
@@ -430,10 +464,11 @@ export function GestaoPerfilPage() {
                   {usuariosFiltrados.map((managedUser) => (
                     <div
                       key={managedUser.id}
-                      className="grid gap-4 px-5 py-4 md:grid-cols-[2fr_1fr_1fr_1fr_1.2fr] md:items-center"
+                      className="grid gap-3 px-5 py-4 md:grid-cols-[2fr_1fr_1fr_1fr_1.2fr] md:items-center md:gap-4"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-teal/20 text-sm font-bold text-brand-teal">
+                      {/* Usuário */}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-teal/20 text-sm font-bold text-brand-teal">
                           {managedUser.name
                             .split(' ')
                             .map((part) => part[0])
@@ -441,53 +476,55 @@ export function GestaoPerfilPage() {
                             .join('')
                             .toUpperCase()}
                         </div>
-                        <div>
-                          <div className="font-semibold text-brand-ink">{managedUser.name}</div>
-                          <div className="text-sm text-muted-foreground">{managedUser.email}</div>
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-brand-ink">{managedUser.name}</div>
+                          <TruncatedEmail email={managedUser.email} />
                         </div>
                       </div>
 
-                      <div>
-                        <Badge variant={managedUser.role === 'COORDENADOR' ? 'coordinator' : 'professor'}>
-                          {managedUser.role === 'COORDENADOR' ? 'Coordenador' : 'Professor'}
-                        </Badge>
+                      {/* Perfil / Cadastro / Status — linha em mobile, colunas no desktop */}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 md:contents">
+                        <div>
+                          <Badge variant={managedUser.role === 'COORDENADOR' ? 'coordinator' : 'professor'}>
+                            {managedUser.role === 'COORDENADOR' ? 'Coordenador' : 'Professor'}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {managedUser.approvedAt
+                            ? new Date(managedUser.approvedAt).toLocaleDateString('pt-BR')
+                            : '—'}
+                        </div>
+                        <div>
+                          <Badge variant={managedUser.status === 'APROVADO' ? 'approved' : 'pending'}>
+                            {managedUser.status === 'APROVADO' ? 'Ativo' : 'Pendente'}
+                          </Badge>
+                        </div>
                       </div>
 
-                      <div className="text-sm text-muted-foreground">
-                        {managedUser.approvedAt
-                          ? new Date(managedUser.approvedAt).toLocaleDateString('pt-BR')
-                          : '—'}
-                      </div>
-
-                      <div>
-                        <Badge variant={managedUser.status === 'APROVADO' ? 'approved' : 'pending'}>
-                          {managedUser.status === 'APROVADO' ? 'Ativo' : 'Pendente'}
-                        </Badge>
-                      </div>
-
-                      <div className="flex flex-wrap justify-end gap-2">
+                      {/* Ações */}
+                      <div className="flex flex-wrap gap-2 md:justify-end">
                         <Button
-                          className="md:min-w-28"
+                          className="flex-1 sm:flex-none md:min-w-28"
                           onClick={() => setEditingUser(managedUser)}
                           variant="secondary"
                         >
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          <CheckCircle2 className="mr-2 h-4 w-4 shrink-0" />
                           Editar
                         </Button>
                         <Button
-                          className="border-brand-teal/20 text-brand-teal hover:bg-brand-teal/5 md:min-w-28"
+                          className="flex-1 sm:flex-none border-brand-teal/20 text-brand-teal hover:bg-brand-teal/5 md:min-w-28"
                           onClick={() => void handleToggleUserStatus(managedUser.id)}
                           variant="outline"
                         >
-                          <RefreshCcw className="mr-2 h-4 w-4" />
+                          <RefreshCcw className="mr-2 h-4 w-4 shrink-0" />
                           {managedUser.status === 'APROVADO' ? 'Desativar' : 'Ativar'}
                         </Button>
                         <Button
-                          className="border-rose-200 text-rose-600 hover:bg-rose-50 md:min-w-28"
+                          className="flex-1 sm:flex-none border-rose-200 text-rose-600 hover:bg-rose-50 md:min-w-28"
                           onClick={() => void handleRemoveUser(managedUser.id)}
                           variant="outline"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" />
+                          <Trash2 className="mr-2 h-4 w-4 shrink-0" />
                           Remover
                         </Button>
                       </div>

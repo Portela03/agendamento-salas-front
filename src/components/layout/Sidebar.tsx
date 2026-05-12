@@ -12,6 +12,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 interface SidebarProps {
   isOpen: boolean;
+  onClose: () => void;
 }
 
 const professorLinks = [
@@ -37,18 +38,30 @@ function getInitials(name: string) {
     .join('');
 }
 
-export function Sidebar({ isOpen }: SidebarProps) {
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, signOut } = useAuth();
 
   const links = user?.role === 'COORDENADOR' ? coordenadorLinks : professorLinks;
 
   return (
-    <aside
-      aria-label="Menu de navegação"
-      className={`fixed left-0 top-16 z-30 flex h-[calc(100vh-4rem)] flex-col bg-brand-teal shadow-lg transition-all duration-300 ease-in-out ${
-        isOpen ? 'w-64' : 'w-16'
-      }`}
-    >
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        aria-label="Menu de navegação"
+        className={`fixed left-0 top-16 z-30 flex h-[calc(100vh-4rem)] flex-col bg-brand-teal shadow-lg transition-all duration-300 ease-in-out
+          ${
+            /* Mobile: slides in/out as full drawer; hidden when closed */
+            isOpen ? 'w-64' : '-translate-x-full lg:translate-x-0 lg:w-16'
+          }`}
+      >
       {/* Nav links */}
       <div className="flex flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-2 py-4">
         {isOpen && (
@@ -62,6 +75,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
             key={to}
             to={to}
             title={!isOpen ? label : undefined}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center rounded-xl py-3 text-sm font-medium transition-colors ${
                 isOpen ? 'gap-3 px-4' : 'justify-center px-0'
@@ -106,6 +120,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
         </button>
       </div>
     </aside>
+    </>
   );
 }
 
