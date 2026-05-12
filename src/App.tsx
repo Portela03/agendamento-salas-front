@@ -9,6 +9,7 @@ import { SolicitarReservaPage } from './pages/SolicitarReservaPage';
 import { CalendarioPage } from './pages/CalendarioPage';
 import ClassManagementPage from './pages/ClassManagementPage';
 import { GestaoPerfilPage } from './pages/GestaoPerfilPage';
+import { ControlePeriodosPage } from './pages/ControlePeriodosPage';
 import { useKeepAlive } from './hooks/useKeepAlive';
 
 export function App() {
@@ -27,6 +28,7 @@ export function App() {
           <Route path="/coordenador/salas" element={<ClassManagementPage />} />
           <Route path="/coordenador/usuarios" element={<GestaoPerfilPage />} />
           <Route path="/coordenador/calendario" element={<CalendarioPage />} />
+          <Route path="/coordenador/periodos" element={<ControlePeriodosPage />} />
         </Route>
       </Route>
 
