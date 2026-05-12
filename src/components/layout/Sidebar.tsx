@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CalendarPlus2,
   History,
+  LayoutDashboard,
   LogOut,
   Users2,
 } from 'lucide-react';
