@@ -24,7 +24,17 @@ export function PeriodoInativoProfessorManager() {
       const resultado = await reservaService.obterPeriodoInativoProfessor();
       setPeriodo(resultado);
     } catch (err) {
-      setError('Erro ao carregar período inativo');
+      // Extract error message from axios response if available
+      let errorMsg = 'Erro ao carregar período inativo';
+      if (typeof err === 'object' && err !== null) {
+        const axiosErr = err as any;
+        if (axiosErr.response?.data?.message) {
+          errorMsg = axiosErr.response.data.message;
+        } else if (err instanceof Error) {
+          errorMsg = err.message;
+        }
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -51,7 +61,16 @@ export function PeriodoInativoProfessorManager() {
       setFormData({ dataInicio: '', dataFim: '' });
       await loadPeriodo();
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Erro ao salvar período';
+      // Extract error message from axios response if available
+      let errorMsg = 'Erro ao salvar período';
+      if (typeof err === 'object' && err !== null) {
+        const axiosErr = err as any;
+        if (axiosErr.response?.data?.message) {
+          errorMsg = axiosErr.response.data.message;
+        } else if (err instanceof Error) {
+          errorMsg = err.message;
+        }
+      }
       setError(errorMsg);
       addToast(errorMsg, 'error');
     } finally {
@@ -71,7 +90,16 @@ export function PeriodoInativoProfessorManager() {
       addToast('Período inativo removido com sucesso', 'info');
       setPeriodo(null);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Erro ao remover período';
+      // Extract error message from axios response if available
+      let errorMsg = 'Erro ao remover período';
+      if (typeof err === 'object' && err !== null) {
+        const axiosErr = err as any;
+        if (axiosErr.response?.data?.message) {
+          errorMsg = axiosErr.response.data.message;
+        } else if (err instanceof Error) {
+          errorMsg = err.message;
+        }
+      }
       setError(errorMsg);
       addToast(errorMsg, 'error');
     } finally {
