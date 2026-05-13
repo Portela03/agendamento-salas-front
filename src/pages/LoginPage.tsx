@@ -7,6 +7,8 @@ import { Input } from '../components/ui/input';
 import { Select } from '../components/ui/select';
 import { useAuth } from '../hooks/useAuth';
 import { type UserRole, userService } from '../services/userService';
+import { Link } from 'react-router-dom';
+
 
 export function LoginPage() {
   const { signIn, isLoading } = useAuth();
@@ -228,6 +230,12 @@ export function LoginPage() {
                   >
                     {isRegisterMode ? 'Voltar para o login' : 'Solicitar novo cadastro'}
                   </Button>
+
+                  <div className="mt-4 text-center text-sm">
+                    <Link className="text-brand-teal hover:underline" to="/esqueci-senha">
+                      Esqueci minha senha
+                    </Link>
+                  </div>
                 </div>
               </form>
 

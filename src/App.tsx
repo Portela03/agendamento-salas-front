@@ -4,13 +4,14 @@ import { AppLayout } from './components/layout/AppLayout';
 import { LoginPage } from './pages/LoginPage';
 import { CoordinatorDashboard } from './pages/CoordinatorDashboard';
 import { HistoricoReservasPage } from './pages/HistoricoReservasPage';
-import { ProfessorDashboard } from './pages/ProfessorDashboard';
 import { SolicitarReservaPage } from './pages/SolicitarReservaPage';
 import { CalendarioPage } from './pages/CalendarioPage';
 import ClassManagementPage from './pages/ClassManagementPage';
 import { GestaoPerfilPage } from './pages/GestaoPerfilPage';
 import { ControlePeriodosPage } from './pages/ControlePeriodosPage';
 import { useKeepAlive } from './hooks/useKeepAlive';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 
 export function App() {
   // Pings /api/health every 10 min so the Render free-tier backend never sleeps.
@@ -20,6 +21,9 @@ export function App() {
     <Routes>
       {/* Public */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
+      <Route path="/resetar-senha" element={<ResetPasswordPage />} />
+
 
       {/* Protected: Coordenador only */}
       <Route element={<PrivateRoute allowedRoles={['COORDENADOR']} />}>

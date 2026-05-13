@@ -1,5 +1,18 @@
 import { api } from './api';
 
+export async function solicitarResetSenha(email: string) {
+  const { data } = await api.post('/resetSenha/esqueceu-senha', { email });
+  return data;
+}
+
+export async function confirmarResetSenha(token: string, novaSenha: string) {
+  const { data } = await api.post('/resetSenha/reset-senha', {
+    token,
+    password: novaSenha,
+  });
+  return data;
+}
+
 export interface LoginCredentials {
   email: string;
   password: string;
