@@ -33,6 +33,7 @@ export function App() {
           <Route path="/coordenador/usuarios" element={<GestaoPerfilPage />} />
           <Route path="/coordenador/calendario" element={<CalendarioPage />} />
           <Route path="/coordenador/periodos" element={<ControlePeriodosPage />} />
+          <Route path="/coordenador/historico" element={<HistoricoReservasPage />} />
         </Route>
       </Route>
 

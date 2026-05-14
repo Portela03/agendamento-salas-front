@@ -27,6 +27,27 @@
     --radius: 1.5rem;
   }
 
+  html.high-contrast {
+    --background: 0 0% 0%;
+    --foreground: 60 100% 50%;
+    --card: 0 0% 10%;
+    --card-foreground: 60 100% 50%;
+    --surface: 0 0% 15%;
+    --primary: 60 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 100%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 60 100% 50%;
+    --accent: 60 100% 50%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 0%;
+    --border: 60 100% 50%;
+    --input: 0 0% 10%;
+    --ring: 60 100% 50%;
+  }
+
   * {
     @apply border-border;
   }
@@ -39,8 +60,319 @@
       linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 239, 233, 0.98));
   }
 
+  html.high-contrast body {
+    background-image: none !important;
+    @apply bg-background;
+  }
+
+  html.high-contrast svg {
+    @apply text-white;
+    color: white;
+  }
+
+  html.high-contrast [class*="text-brand"] {
+    @apply text-yellow-400;
+  }
+
   #root {
     @apply min-h-screen;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  /* ALTO CONTRASTE - Cores Personalizadas */
+  /* ═══════════════════════════════════════════════════════════════ */
+
+  html.high-contrast .bg-hero-grid {
+    @apply opacity-0;
+  }
+
+  html.high-contrast .bg-white\/85 {
+    background-color: rgb(22 21 21 / 85%);
+  }
+
+  html.high-contrast .bg-white\/80 {
+    background-color: rgb(0 0 0 / 80%) !important;
+  }
+
+  html.high-contrast button.bg-white\/80:hover {
+  background-color: rgb(33, 33, 33) !important;
+}
+
+  html.high-contrast .bg-white\/90 {
+    background-color: rgb(55 55 55) !important;
+  }
+
+  html.high-contrast .bg-white\/75 {
+    background-color: rgb(22 21 21 / 85%) !important;
+  }
+
+  html.high-contrast .bg-white\/95 {
+    background-color: rgb(0 0 0 / 95%) !important;
+  }
+
+  html.high-contrast .bg-white {
+    background-color: rgb(55 55 55) !important;
+  }
+
+  /* Calendário */
+  html.high-contrast .bg-rose-50\/80 {
+    background-color: rgb(255 76 89 / 80%) !important;
+    border: none;
+  }
+
+  html.high-contrast .bg-gray-50\/80 {
+    background-color: rgb(22 22 22 / 80%) !important;
+    border: none;
+  }
+
+  html.high-contrast .bg-slate-50\/70 {
+    background-color: rgb(0 0 0 / 70%) !important;
+    border: none;
+  }
+
+  html.high-contrast .bg-amber-50\/80 {
+    background-color: rgb(92 90 81 / 80%) !important;
+    color: rgba(202, 175, 67, 0.8) !important;
+    border: none;
+
+  }
+
+  html.high-contrast .bg-amber-50\/80 * {
+    color: rgba(202, 175, 67, 0.8) !important;
+    fill: rgba(202, 175, 67, 0.8) !important;
+    stroke: rgba(202, 175, 67, 0.8) !important;
+  }
+
+  html.high-contrast .hover\:bg-brand-mist\/20:hover {
+    background-color: rgb(255 255 255) !important;
+  }
+
+  html.high-contrast .bg-brand-mist\/20 {
+    background-color: transparent !important;
+  }
+
+  .bg-brand-mist,
+  html.high-contrast .bg-brand-mist {
+    background-color: transparent !important;
+    background-image: none !important;
+  }
+
+  html.high-contrast .bg-brand-teal\/5 {
+    background-color: rgb(19 18 18) !important;
+  }
+
+  html.high-contrast .bg-red-100 {
+    background-color: rgb(22 21 21 / 85%) !important;
+  }
+
+  html.high-contrast .bg-brand-wine\/10 {
+    background-color: rgba(255, 255, 255, 0.74) !important;
+    color: rgb(0, 0, 0) !important;
+  }
+
+  html.high-contrast .bg-brand-wine\/10 * {
+    color: rgb(0, 0, 0) !important;
+    fill: rgb(0, 0, 0) !important;
+    stroke: rgb(0, 0, 0) !important;
+  }
+
+  /* Gradientes */
+  html.high-contrast .bg-gradient-to-r,
+  html.high-contrast .bg-gradient-to-br,
+  html.high-contrast .from-white,
+  html.high-contrast .to-brand-mist\/20 {
+    background-image: none !important;
+    --tw-gradient-from: transparent !important;
+    --tw-gradient-to: transparent !important;
+    --tw-gradient-stops: transparent !important;
+    background-color: rgb(25 25 25) !important;
+  }
+
+  /* Cores de Status */
+  html.high-contrast .text-rose-700,
+  html.high-contrast .text-rose-600,
+  html.high-contrast .text-rose-500,
+  html.high-contrast .text-rose-800 {
+    color: rgb(255 228 230) !important;
+  }
+
+  html.high-contrast .bg-rose-100,
+  html.high-contrast .bg-rose-50\/80,
+  html.high-contrast .bg-rose-50,
+  html.high-contrast .hover\:bg-rose-50:hover {
+    background-color: rgb(190 18 60 / 80%) !important;
+  }
+
+  html.high-contrast .border-rose-200,
+  html.high-contrast .border-rose-500 {
+    border-color: rgb(253 2 65) !important;
+  }
+
+  html.high-contrast .text-emerald-700,
+  html.high-contrast .text-emerald-600,
+  html.high-contrast .text-emerald-500 {
+    color: rgb(167 243 208) !important;
+  }
+
+  html.high-contrast .bg-emerald-100,
+  html.high-contrast .bg-emerald-50 {
+    background-color: rgb(4 120 87) !important;
+  }
+
+  html.high-contrast .border-emerald-200,
+  html.high-contrast .border-emerald-500 {
+    border-color: rgb(155, 41, 41) !important;
+  }
+
+  /* Bordas */
+  html.high-contrast .border-brand-teal\/20 {
+    border-color: rgb(255 255 255 / 86%) !important;
+  }
+
+  html.high-contrast .border-brand-teal\/15 {
+    border-color: rgb(255 255 255 / 79%) !important;
+  }
+
+  html.high-contrast .border-input {
+    border-color: rgb(255 255 255) !important;
+  }
+
+  html.high-contrast .ring-rose-200,
+  html.high-contrast .ring-emerald-200 {
+    --tw-ring-opacity: 0 !important;
+    --tw-ring-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* Calendário - Dias */
+  html.high-contrast .semestre-banner {
+    border-color: transparent !important;
+  }
+
+  html.high-contrast button[id^="day-cell-"] {
+    border-color: transparent !important;
+  }
+
+  html.high-contrast button[id^="day-cell-"].hc-available {
+    border-color: rgb(255 255 255) !important;
+    box-shadow: 0 0 0 2px rgb(255 255 255 / 10%) inset;
+  }
+
+  html.high-contrast button[id^="day-cell-"].hc-available > span {
+    color: rgb(255 255 255) !important;
+  }
+
+  html.high-contrast button[id^="day-cell-"].hc-available:hover > span {
+    color: rgb(0 0 0) !important;
+  }
+
+  html.high-contrast button[id^="day-cell-"].hc-available:hover svg,
+  html.high-contrast button[id^="day-cell-"].hc-available:hover * {
+    color: rgb(0 0 0) !important;
+    fill: rgb(0 0 0) !important;
+    stroke: rgb(0 0 0) !important;
+  }
+
+  /* Formulários */
+  html.high-contrast textarea {
+    background-color: rgb(55 55 55) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--foreground)) !important;
+  }
+
+  html.high-contrast textarea::placeholder {
+    color: hsl(var(--foreground) / 0.7) !important;
+  }
+
+  html.high-contrast select {
+    background-color: rgb(55 55 55) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--foreground)) !important;
+  }
+
+  html.high-contrast select:hover {
+    background-color: rgb(0 0 0) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  html.high-contrast select option {
+    background-color: rgb(0 0 0) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  /* Alto contraste: botões hover com fundo mais claro */
+  html.high-contrast .hover\:bg-\[\#970000\]:hover {
+    background-color: rgb(255, 130, 130) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  html.high-contrast button.bg-brand-teal:hover {
+    background-color: rgba(4, 189, 221, 0.697) !important;
+    color: rgb(255, 255, 255) !important;
+  }
+
+  html.high-contrast .bg-brand-teal {
+    background-color: rgb(0 72 84) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  /* Alto contraste: bordas de botões com branco */
+  html.high-contrast button.border-border,
+  html.high-contrast button[class*="border"] {
+    border-color: hsl(0deg 0% 100%) !important;
+  }
+
+  /* Se quiser ser mais específico para buttons com classe outline */
+  html.high-contrast button[variant="outline"],
+  html.high-contrast .bg-white.border-border {
+    border-color: rgb(255 255 255) !important;
+  }
+  
+  html.high-contrast .bg-brand-teal\/10 {
+    background-color: rgb(1 128 149 / 80%);
+  }
+
+  html.high-contrast .bg-brand-teal\/10 {
+    background-color: rgb(1 128 149 / 80%);
+  }
+
+  html.high-contrast .bg-slate-50 {
+    background-color: rgb(0 0 0) !important;
+    border: none;
+  }
+  html.high-contrast .bg-white\/70 {
+  background-color: rgb(40 40 40 / 70%) !important;
+    border: none;
+  }
+
+  html.high-contrast .hover\:bg-white\/10:hover,
+  html.high-contrast .hover\:bg-white\/15:hover {
+    background-color: rgb(0 0 0 / 91%) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  html.high-contrast .hover\:bg-white\/10:hover svg,
+  html.high-contrast .hover\:bg-white\/15:hover svg,
+  html.high-contrast .hover\:bg-white\/10:hover *,
+  html.high-contrast .hover\:bg-white\/15:hover * {
+    color: rgb(255 255 255) !important;
+    fill: rgb(255 255 255) !important;
+    stroke: rgb(255 255 255) !important;
+  }
+  html.high-contrast aside .border-brand-wine.bg-white\/15 {
+    background-color: rgb(0 0 0 / 91%) !important;
+    color: rgb(255 255 255) !important;
+  }
+
+  html.high-contrast aside .border-brand-wine.bg-white\/15 svg,
+  html.high-contrast aside .border-brand-wine.bg-white\/15 * {
+    color: rgb(255 255 255) !important;
+    fill: rgb(255 255 255) !important;
+    stroke: rgb(255 255 255) !important;
+  }
+
+  html.high-contrast aside .border-brand-wine {
+    border-color: rgb(255 255 255) !important;
   }
 }
 

@@ -8,7 +8,7 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
 
   return (
-    <div className="min-h-screen bg-brand-sand">
+    <div className="min-h-screen bg-background high-contrast:bg-gray-900">
       <Navbar onToggleSidebar={() => setSidebarOpen((prev) => !prev)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 

@@ -84,21 +84,21 @@ function DayPanel({
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="relative flex h-full w-full max-w-md flex-col overflow-y-auto bg-white shadow-2xl"
+        className="relative flex h-full w-full max-w-md flex-col overflow-y-auto bg-white shadow-2xl high-contrast:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-brand-teal/10 bg-white/95 p-6 backdrop-blur">
+        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-brand-teal/10 bg-white/95 p-6 backdrop-blur high-contrast:border-yellow-400 high-contrast:bg-gray-800">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-teal">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-teal high-contrast:text-yellow-400">
               Detalhes do dia
             </p>
-            <h2 className="mt-1 text-lg font-bold capitalize text-brand-ink">{label}</h2>
+            <h2 className="mt-1 text-lg font-bold capitalize text-brand-ink high-contrast:text-yellow-400">{label}</h2>
           </div>
           <button
             id="close-day-panel"
             onClick={onClose}
-            className="rounded-xl p-2 text-muted-foreground transition hover:bg-brand-mist/30 hover:text-brand-ink"
+            className="rounded-xl p-2 text-muted-foreground transition hover:bg-brand-mist/30 hover:text-brand-ink high-contrast:text-gray-300 high-contrast:hover:bg-gray-700"
           >
             <X className="h-5 w-5" />
           </button>
@@ -109,8 +109,8 @@ function DayPanel({
           <div
             className={`mx-6 mt-4 rounded-2xl px-4 py-3 text-sm font-medium ${
               info.feriado.tipo === 'academico'
-                ? 'border border-amber-200 bg-amber-50 text-amber-800'
-                : 'border border-rose-200 bg-rose-50 text-rose-800'
+                ? 'border border-amber-200 bg-amber-50 text-amber-800 high-contrast:border-yellow-400 high-contrast:bg-yellow-950 high-contrast:text-yellow-400'
+                : 'border border-rose-200 bg-rose-50 text-rose-800 high-contrast:border-red-500 high-contrast:bg-red-950 high-contrast:text-red-400'
             }`}
           >
             <span className="mr-2">
@@ -128,28 +128,28 @@ function DayPanel({
         {/* Reservas */}
         <div className="flex-1 space-y-3 p-6">
           {info.reservas.length === 0 && !info.feriado && (
-            <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-brand-teal/20 bg-brand-mist/10 py-12 text-center">
-              <CalendarDays className="mb-3 h-8 w-8 text-brand-teal/40" />
-              <p className="text-sm text-muted-foreground">Nenhuma reserva aprovada neste dia.</p>
+            <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-brand-teal/20 bg-brand-mist/10 py-12 text-center high-contrast:border-yellow-400 high-contrast:bg-gray-800">
+              <CalendarDays className="mb-3 h-8 w-8 text-brand-teal/40 high-contrast:text-yellow-400/40" />
+              <p className="text-sm text-muted-foreground high-contrast:text-gray-300">Nenhuma reserva aprovada neste dia.</p>
             </div>
           )}
 
           {info.reservas.map((r) => (
             <div
               key={r.id}
-              className="rounded-2xl border border-brand-teal/10 bg-gradient-to-br from-white to-brand-mist/20 p-4"
+              className="rounded-2xl border border-brand-teal/10 bg-gradient-to-br from-white to-brand-mist/20 p-4 high-contrast:border-yellow-400 high-contrast:from-gray-800 high-contrast:to-gray-800"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="font-semibold text-brand-ink">{r.salaNome ?? r.salaId}</p>
-                <span className="flex-shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                <p className="font-semibold text-brand-ink high-contrast:text-yellow-400">{r.salaNome ?? r.salaId}</p>
+                <span className="flex-shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 high-contrast:bg-green-950 high-contrast:text-green-400">
                   Aprovada
                 </span>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                <p><span className="font-medium text-brand-ink">Professor:</span> {r.professorNome ?? '—'}</p>
-                <p><span className="font-medium text-brand-ink">Horário:</span> {formatHorarioReserva(r)}</p>
-                <p><span className="font-medium text-brand-ink">Turma:</span> {r.turma ?? '—'}</p>
-                <p><span className="font-medium text-brand-ink">Status:</span> {r.status}</p>
+              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground high-contrast:text-gray-300">
+                <p><span className="font-medium text-brand-ink high-contrast:text-yellow-400">Professor:</span> {r.professorNome ?? '—'}</p>
+                <p><span className="font-medium text-brand-ink high-contrast:text-yellow-400">Horário:</span> {formatHorarioReserva(r)}</p>
+                <p><span className="font-medium text-brand-ink high-contrast:text-yellow-400">Turma:</span> {r.turma ?? '—'}</p>
+                <p><span className="font-medium text-brand-ink high-contrast:text-yellow-400">Status:</span> {r.status}</p>
               </div>
             </div>
           ))}
@@ -171,6 +171,8 @@ function DayCell({
   const hasFeriado = !!info.feriado;
   const hasReservas = info.reservas.length > 0;
 
+  const isBookable = !info.isForaPeriodo && !info.isDomingo && !info.isPast && !hasFeriado;
+
   let bg = 'bg-white hover:bg-brand-mist/20';
   if (info.isForaPeriodo || info.isDomingo) bg = 'bg-slate-50/70 hover:bg-slate-100/60';
   if (info.isToday) bg = 'bg-brand-teal/8 ring-2 ring-brand-teal/30 hover:bg-brand-teal/12';
@@ -178,27 +180,35 @@ function DayCell({
   if (hasFeriado && info.feriado?.tipo === 'nacional') bg = 'bg-rose-50/80 hover:bg-rose-50';
   if (hasFeriado && info.feriado?.tipo === 'academico') bg = 'bg-amber-50/80 hover:bg-amber-50';
 
+  // Alto contraste
+  let highContrastBg = '';
+  if (info.isForaPeriodo || info.isDomingo) highContrastBg = 'high-contrast:bg-zinc-900 high-contrast:hover:bg-gray-600';
+  if (info.isToday) highContrastBg = 'high-contrast:bg-yellow-400/20 high-contrast:ring-2 high-contrast:ring-yellow-400/50';
+  if (hasFeriado && info.feriado?.tipo === 'nacional') highContrastBg = 'high-contrast:bg-red-950 high-contrast:hover:bg-red-900';
+  if (hasFeriado && info.feriado?.tipo === 'academico') highContrastBg = 'high-contrast:bg-yellow-950 high-contrast:hover:bg-yellow-900';
+
   return (
     <button
       id={`day-cell-${isoDate(info.date)}`}
       onClick={onClick}
+      // adiciona classe identificadora para alto contraste
       className={`group relative flex min-h-[88px] w-full flex-col rounded-xl border p-2 text-left transition-all ${
         info.isForaPeriodo || info.isDomingo
-          ? 'border-slate-200/60'
-          : 'border-brand-teal/8'
-      } ${bg}`}
+          ? 'border-slate-200/60 high-contrast:border-gray-600'
+          : 'border-brand-teal/8 high-contrast:border-yellow-400/30'
+      } ${bg} ${highContrastBg} ${isBookable ? 'hc-available' : 'hc-unavailable'}`}
     >
       {/* Número do dia */}
       <span
         className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold transition
           ${
             info.isToday
-              ? 'bg-brand-teal text-white'
+              ? 'bg-brand-teal text-white high-contrast:bg-yellow-400 high-contrast:text-black'
               : info.isDomingo || info.isForaPeriodo
-              ? 'text-muted-foreground/40'
+              ? 'text-muted-foreground/40 high-contrast:text-gray-400'
               : info.isPast
-              ? 'text-muted-foreground/50'
-              : 'text-brand-ink'
+              ? 'text-muted-foreground/50 high-contrast:text-gray-400'
+              : 'text-brand-ink high-contrast:text-yellow-400'
           }`}
       >
         {info.date.getDate()}
@@ -206,14 +216,14 @@ function DayCell({
 
       {/* Indicador: domingo */}
       {info.isDomingo && !hasFeriado && !info.isForaPeriodo && (
-        <span className="mt-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+        <span className="mt-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 high-contrast:bg-gray-600 high-contrast:text-gray-300">
           Sem aulas
         </span>
       )}
 
       {/* Indicador: fora do período letivo */}
       {info.isForaPeriodo && !hasFeriado && (
-        <span className="mt-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+        <span className="mt-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 high-contrast:bg-gray-600 high-contrast:text-gray-300">
           Fora do período
         </span>
       )}
@@ -223,8 +233,8 @@ function DayCell({
         <span
           className={`mt-1 line-clamp-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-tight ${
             info.feriado?.tipo === 'academico'
-              ? 'bg-amber-100 text-amber-700'
-              : 'bg-rose-100 text-rose-700'
+              ? 'bg-amber-100 text-amber-700 high-contrast:bg-yellow-950 high-contrast:text-yellow-400'
+              : 'bg-rose-100 text-rose-700 high-contrast:bg-red-950 high-contrast:text-red-400'
           }`}
         >
           {info.feriado?.tipo === 'academico' ? `🎓 ${info.feriado?.label}` : `🇧🇷 ${info.feriado?.label}`}
@@ -237,13 +247,13 @@ function DayCell({
           {info.reservas.slice(0, 3).map((r) => (
             <span
               key={r.id}
-              className="line-clamp-1 max-w-full rounded-md bg-brand-teal/15 px-1.5 py-0.5 text-[10px] font-medium text-brand-teal"
+              className="line-clamp-1 max-w-full rounded-md bg-brand-teal/15 px-1.5 py-0.5 text-[10px] font-medium text-brand-teal high-contrast:bg-yellow-400/20 high-contrast:text-yellow-400"
             >
               {r.salaNome ?? r.horario}
             </span>
           ))}
           {info.reservas.length > 3 && (
-            <span className="rounded-md bg-brand-ink/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-ink">
+            <span className="rounded-md bg-brand-ink/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-ink high-contrast:bg-yellow-400/20 high-contrast:text-yellow-400">
               +{info.reservas.length - 3}
             </span>
           )}
@@ -252,6 +262,7 @@ function DayCell({
     </button>
   );
 }
+
 
 // ── Page principal ────────────────────────────────────────────────────────────
 
@@ -370,16 +381,16 @@ export function CalendarioPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  return (
+    return (
     <div className="container py-8">
       {selectedDay && (
         <DayPanel info={selectedDay} onClose={() => setSelectedDay(null)} />
       )}
 
         {/* Filtros */}
-        <div className="mb-6 grid gap-3 rounded-[24px] border border-brand-teal/10 bg-white/85 p-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-6 grid gap-3 rounded-[24px] border border-brand-teal/10 bg-white/85 p-5 sm:grid-cols-2 lg:grid-cols-4 high-contrast:border-yellow-400 high-contrast:bg-gray-900">
           <div>
-            <label id="label-filtro-sala" className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <label id="label-filtro-sala" className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground high-contrast:text-yellow-400">
               Sala
             </label>
             <select
@@ -387,7 +398,7 @@ export function CalendarioPage() {
               aria-labelledby="label-filtro-sala"
               value={filtroSala}
               onChange={(e) => setFiltroSala(e.target.value)}
-              className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
+              className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal/30 high-contrast:bg-gray-800 high-contrast:text-yellow-400 high-contrast:border-yellow-400"
             >
               <option value="">Todas as salas</option>
               {classes.map((c) => (
@@ -397,7 +408,7 @@ export function CalendarioPage() {
           </div>
 
           <div>
-            <label id="label-filtro-periodo" className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <label id="label-filtro-periodo" className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground high-contrast:text-yellow-400">
               Período
             </label>
             <select
@@ -405,7 +416,7 @@ export function CalendarioPage() {
               aria-labelledby="label-filtro-periodo"
               value={filtroPeriodo}
               onChange={(e) => setFiltroPeriodo(e.target.value)}
-              className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
+              className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal/30 high-contrast:bg-gray-800 high-contrast:text-yellow-400 high-contrast:border-yellow-400"
             >
               {PERIODOS.map((p) => (
                 <option key={p.value} value={p.value}>{p.label}</option>
@@ -413,13 +424,12 @@ export function CalendarioPage() {
             </select>
           </div>
 
-
           <div className="flex items-end">
             <Button
               id="btn-atualizar-calendario"
               variant="secondary"
               onClick={() => void load()}
-              className="w-full"
+              className="w-full high-contrast:border-yellow-400 high-contrast:text-yellow-400 high-contrast:hover:bg-yellow-400/10"
               disabled={loading}
             >
               <RefreshCcw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -429,28 +439,28 @@ export function CalendarioPage() {
         </div>
 
         {/* Calendário */}
-        <div className="rounded-[28px] border border-brand-teal/10 bg-white/85 p-6 shadow-panel">
+        <div className="rounded-[28px] border border-brand-teal/10 bg-white/85 p-6 shadow-panel high-contrast:border-yellow-400 high-contrast:bg-gray-900">
 
           {/* Banner de semestre */}
           {semestreDoMes ? (
-            <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-brand-teal/15 bg-brand-teal/5 px-4 py-3">
-              <BookOpen className="h-4 w-4 flex-shrink-0 text-brand-teal" />
-              <span className="text-sm font-semibold text-brand-ink">{semestreDoMes.nome}</span>
-              <span className="text-muted-foreground/40">|</span>
-              <span className="text-sm text-muted-foreground">
+            <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-brand-teal/15 bg-brand-teal/5 px-4 py-3 high-contrast:border-yellow-400 high-contrast:bg-yellow-950 semestre-banner">
+              <BookOpen className="h-4 w-4 flex-shrink-0 text-brand-teal high-contrast:text-yellow-400" />
+              <span className="text-sm font-semibold text-brand-ink high-contrast:text-yellow-400">{semestreDoMes.nome}</span>
+              <span className="text-muted-foreground/40 high-contrast:text-gray-400">|</span>
+              <span className="text-sm text-muted-foreground high-contrast:text-gray-300">
                 Aulas: {new Date(semestreDoMes.inicioAulas + 'T12:00:00').toLocaleDateString('pt-BR')}
                 {' '}–{' '}
                 {new Date(semestreDoMes.terminoAulas + 'T12:00:00').toLocaleDateString('pt-BR')}
               </span>
-              <span className="text-muted-foreground/40">|</span>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-muted-foreground/40 high-contrast:text-gray-400">|</span>
+              <span className="text-sm text-muted-foreground high-contrast:text-gray-300">
                 Encerramento: {new Date(semestreDoMes.encerramentoOficial + 'T12:00:00').toLocaleDateString('pt-BR')}
               </span>
             </div>
           ) : (
-            <div className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <BookOpen className="h-4 w-4 flex-shrink-0 text-slate-400" />
-              <p className="text-sm text-slate-500">
+            <div className="mb-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 high-contrast:border-gray-600 high-contrast:bg-gray-800">
+              <BookOpen className="h-4 w-4 flex-shrink-0 text-slate-400 high-contrast:text-gray-500" />
+              <p className="text-sm text-slate-500 high-contrast:text-gray-300">
                 Este mês está fora do período letivo — não há aulas em atividade.
               </p>
             </div>
@@ -461,16 +471,16 @@ export function CalendarioPage() {
             <button
               id="btn-mes-anterior"
               onClick={prevMes}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-teal/15 text-brand-teal transition hover:bg-brand-teal hover:text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-teal/15 text-brand-teal transition hover:bg-brand-teal hover:text-white high-contrast:border-yellow-400 high-contrast:text-yellow-400 high-contrast:hover:bg-yellow-400 high-contrast:hover:text-black"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
 
             <div className="text-center">
-              <h2 className="font-serif text-2xl font-bold text-brand-ink">
+              <h2 className="font-serif text-2xl font-bold text-brand-ink high-contrast:text-yellow-400">
                 {MESES[mes]} {ano}
               </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="mt-0.5 text-xs text-muted-foreground high-contrast:text-gray-300">
                 {reservas.length} reserva{reservas.length !== 1 ? 's' : ''} aprovada{reservas.length !== 1 ? 's' : ''}
                 {' · '}
                 {totalFeriados} dia{totalFeriados !== 1 ? 's' : ''} bloqueado{totalFeriados !== 1 ? 's' : ''}
@@ -480,34 +490,37 @@ export function CalendarioPage() {
             <button
               id="btn-proximo-mes"
               onClick={nextMes}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-teal/15 text-brand-teal transition hover:bg-brand-teal hover:text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-teal/15 text-brand-teal transition hover:bg-brand-teal hover:text-white high-contrast:border-yellow-400 high-contrast:text-yellow-400 high-contrast:hover:bg-yellow-400 high-contrast:hover:text-black"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
 
           {/* Legenda */}
-          <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+          <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground high-contrast:text-gray-300">
             <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-sm bg-brand-teal/15 ring-1 ring-brand-teal/30" />
-              Reserva aprovada
+              <span className="h-3 w-3 rounded-sm bg-brand-teal/15 ring-1 ring-brand-teal/30 high-contrast:bg-yellow-400/20 high-contrast:ring-yellow-400" />
+              <span className="high-contrast:text-yellow-400">Reserva aprovada</span>
             </span>
+
             <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-sm bg-rose-100 ring-1 ring-rose-200" />
-              Feriado nacional
+              <span className="h-3 w-3 rounded-sm bg-rose-100 ring-1 ring-rose-200 bg-rose-50/80 high-contrast:bg-rose-50/80 high-contrast:ring-red-500" />
+              <span className="high-contrast:text-red-400">Feriado nacional</span>
             </span>
+
             <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-sm bg-amber-100 ring-1 ring-amber-200" />
-              Recesso acadêmico
+              <span className="h-3 w-3 rounded-sm bg-amber-100 ring-1 ring-amber-200 high-contrast:bg-yellow-950 high-contrast:ring-yellow-400" />
+              <span className="high-contrast:text-yellow-400">Recesso acadêmico</span>
             </span>
+
             <span className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded-full bg-brand-teal" />
-              Hoje
+              <span className="h-3 w-3 rounded-full bg-brand-teal high-contrast:bg-yellow-400" />
+              <span className="high-contrast:text-yellow-400">Hoje</span>
             </span>
           </div>
 
           {error && (
-            <div className="mb-4 rounded-2xl border border-brand-wine/20 bg-brand-wine/5 px-4 py-3 text-sm text-brand-wine">
+            <div className="mb-4 rounded-2xl border border-brand-wine/20 bg-brand-wine/5 px-4 py-3 text-sm text-brand-wine high-contrast:border-red-500 high-contrast:bg-red-950 high-contrast:text-red-400">
               {error}
             </div>
           )}
@@ -518,7 +531,7 @@ export function CalendarioPage() {
               <div
                 key={s}
                 className={`py-2 text-center text-xs font-semibold uppercase tracking-[0.14em] ${
-                  i === 0 ? 'text-slate-400' : 'text-muted-foreground'
+                  i === 0 ? 'text-slate-400 high-contrast:text-gray-400' : 'text-muted-foreground high-contrast:text-gray-300'
                 }`}
               >
                 {s}
@@ -543,10 +556,10 @@ export function CalendarioPage() {
         </div>
 
         {/* Info box */}
-        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-brand-teal/10 bg-white/80 px-5 py-4 text-sm text-muted-foreground">
-          <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-teal" />
+        <div className="mt-4 flex items-start gap-3 rounded-2xl border border-brand-teal/10 bg-white/80 px-5 py-4 text-sm text-muted-foreground high-contrast:border-yellow-400 high-contrast:bg-gray-900 high-contrast:text-gray-300">
+          <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-teal high-contrast:text-yellow-400" />
           <p>
-            Apenas reservas com status <strong className="text-brand-ink">Aprovada</strong> aparecem no calendário.
+            Apenas reservas com status <strong className="text-brand-ink high-contrast:text-yellow-400">Aprovada</strong> aparecem no calendário.
             Dias marcados como feriado nacional ou recesso acadêmico são bloqueados automaticamente — não é possível
             agendar salas nessas datas.
           </p>
