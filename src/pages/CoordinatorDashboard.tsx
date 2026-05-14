@@ -15,7 +15,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useNotifications } from '../hooks/useNotifications';
+
 
 import { listClasses, type ClassItem } from '../services/classService';
 import { Badge } from '../components/ui/badge';
@@ -160,11 +160,7 @@ function PanelMessage({ children, tone }: { children: ReactNode; tone: 'error' |
   );
 }
 
-// ── Component Principal ───────────────────────────────────────────────────────
-
 export function CoordinatorDashboard() {
-  const { unreadNotifications, markAllAsRead } = useNotifications();
-
   // Reservas
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [reservasLoading, setReservasLoading] = useState(false);

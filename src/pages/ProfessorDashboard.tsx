@@ -1,13 +1,9 @@
-import { useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useNotifications } from '../hooks/useNotifications';
 
 import { SolicitarReservaInline } from './SolicitarReservaPage';
 
 export function ProfessorDashboard() {
   const { user } = useAuth();
-  const { unreadNotifications, markAllAsRead } = useNotifications();
-
   return (
     <div className="container py-8">
       <div className="mb-6">
