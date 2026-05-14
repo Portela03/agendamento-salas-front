@@ -130,8 +130,8 @@ function agruparReservas(reservas: Reserva[]): GrupoReserva[] {
   }
 
   return Object.values(map).sort((a, b) => {
-    const createdA = new Date(a.principal.data).getTime();
-    const createdB = new Date(b.principal.data).getTime();
+    const createdA = new Date(a.principal.createdAt).getTime();
+    const createdB = new Date(b.principal.createdAt).getTime();
     return createdB - createdA;
   });
 }
@@ -288,6 +288,19 @@ function GrupoCard({
         {!isSerie && principal.justificativa && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
             <span className="font-semibold">Motivo da rejeição:</span> {principal.justificativa}
+          </div>
+        )}
+
+        {!isSerie && onCancelar && principal.status !== 'CANCELADA' && principal.status !== 'REJEITADA' && (
+          <div className="mt-3">
+             <Button
+               variant="outline"
+               className="border-rose-200 text-rose-600 hover:bg-rose-50"
+               onClick={() => onCancelar(principal.id)}
+             >
+               <XCircle className="mr-2 h-4 w-4" />
+               Cancelar Reserva
+             </Button>
           </div>
         )}
       </div>

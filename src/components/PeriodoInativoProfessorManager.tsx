@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CalendarRange, Check, ChevronRight, Lock, LockOpen, Trash2, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
+
 import { PeriodoInativoProfessor, reservaService } from '../services/reservaService';
 import { useToast } from '../components/Toast';
 

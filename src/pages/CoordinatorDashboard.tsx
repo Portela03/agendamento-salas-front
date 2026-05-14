@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
-import { Toast, useToast } from '../components/Toast';
+
 import { listClasses, type ClassItem } from '../services/classService';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -164,17 +164,6 @@ function PanelMessage({ children, tone }: { children: ReactNode; tone: 'error' |
 
 export function CoordinatorDashboard() {
   const { unreadNotifications, markAllAsRead } = useNotifications();
-  const { toasts, addToast, dismiss } = useToast();
-
-  useEffect(() => {
-    if (unreadNotifications.length === 0) return;
-
-    unreadNotifications.forEach((notification) => {
-      addToast(notification.message, 'info');
-    });
-
-    void markAllAsRead();
-  }, [unreadNotifications, addToast, markAllAsRead]);
 
   // Reservas
   const [reservas, setReservas] = useState<Reserva[]>([]);
@@ -291,7 +280,11 @@ export function CoordinatorDashboard() {
       },
       {},
     ),
-  );
+  ).sort((a, b) => {
+    const createdA = new Date(a.principal.createdAt).getTime();
+    const createdB = new Date(b.principal.createdAt).getTime();
+    return createdB - createdA;
+  });
 
   const classesFiltradas = filtroTipoSala ? classes.filter((item) => item.type === filtroTipoSala) : classes;
 
@@ -435,6 +428,11 @@ export function CoordinatorDashboard() {
                   >
                     <div className="flex-1 space-y-3">
                       <div className="flex flex-wrap items-center gap-3">
+                        {grupo.isSerie && (
+                          <span className="inline-flex items-center rounded-full bg-brand-teal/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-brand-teal">
+                            Semestral
+                          </span>
+                        )}
                         <h2 className="text-lg font-bold text-brand-ink high-contrast:text-yellow-400">
                           Sala: {reserva.salaNome ?? reserva.salaId}
                         </h2>
@@ -501,10 +499,9 @@ export function CoordinatorDashboard() {
                       )}
                     </div>
 
-                    {pendentes.length > 0 && (
+                    {(pendentes.length > 0 || grupo.isSerie) && (
                       <div className="flex shrink-0 flex-col gap-2 sm:flex-row md:flex-col">
-                        {grupo.isSerie ? (
-                          <>
+                        {grupo.isSerie && pendentes.length > 0 && (
                             <Button
                               className="bg-emerald-600 text-white hover:bg-emerald-700 high-contrast:bg-green-600 high-contrast:text-black high-contrast:hover:bg-green-500"
                               onClick={() => void handleAprovarSerie(serieId)}
@@ -512,6 +509,9 @@ export function CoordinatorDashboard() {
                               <CheckCircle2 className="mr-2 h-4 w-4" />
                               Aprovar todas
                             </Button>
+                        )}
+
+                        {grupo.isSerie && (
                             <Button
                               className="high-contrast:border-yellow-400 high-contrast:text-yellow-400 high-contrast:hover:bg-yellow-400/10"
                               onClick={() =>
@@ -524,26 +524,26 @@ export function CoordinatorDashboard() {
                             >
                               {isExpanded ? 'Ocultar datas' : 'Ver datas'}
                             </Button>
-                          </>
-                        ) : (
-                          <Button
-                            className="bg-emerald-600 text-white hover:bg-emerald-700 high-contrast:bg-green-600 high-contrast:text-black high-contrast:hover:bg-green-500"
-                            onClick={() => void handleAprovarReserva(reserva.id)}
-                          >
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Aprovar
-                          </Button>
                         )}
 
-                        {!grupo.isSerie && (
-                          <Button
-                            className="border-rose-200 text-rose-600 hover:bg-rose-50 high-contrast:border-red-500 high-contrast:text-red-400 high-contrast:hover:bg-red-950"
-                            onClick={() => setRejeitarId(reserva.id)}
-                            variant="outline"
-                          >
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Rejeitar
-                          </Button>
+                        {!grupo.isSerie && pendentes.length > 0 && (
+                          <>
+                            <Button
+                              className="bg-emerald-600 text-white hover:bg-emerald-700 high-contrast:bg-green-600 high-contrast:text-black high-contrast:hover:bg-green-500"
+                              onClick={() => void handleAprovarReserva(reserva.id)}
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Aprovar
+                            </Button>
+                            <Button
+                              className="border-rose-200 text-rose-600 hover:bg-rose-50 high-contrast:border-red-500 high-contrast:text-red-400 high-contrast:hover:bg-red-950"
+                              onClick={() => setRejeitarId(reserva.id)}
+                              variant="outline"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Rejeitar
+                            </Button>
+                          </>
                         )}
                       </div>
                     )}
@@ -673,7 +673,7 @@ export function CoordinatorDashboard() {
         </CardContent>
       </Card>
 
-      <Toast toasts={toasts} onDismiss={dismiss} />
+
     </div>
   );
 }
