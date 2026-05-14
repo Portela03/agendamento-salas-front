@@ -8,6 +8,7 @@ import {
   LogOut,
   ShieldOff,
   Users2,
+  CalendarX
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -28,6 +29,7 @@ const coordenadorLinks = [
   { to: '/coordenador/usuarios', label: 'Gestão de Perfis', icon: Users2 },
   { to: '/coordenador/calendario', label: 'Calendário', icon: CalendarDays },
   { to: '/coordenador/periodos', label: 'Controle de Períodos', icon: ShieldOff },
+  { to: '/coordenador/historico', label: 'Histórico', icon: History },
 ];
 
 function getInitials(name: string) {

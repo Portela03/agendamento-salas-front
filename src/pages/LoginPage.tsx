@@ -76,38 +76,38 @@ export function LoginPage() {
       <div className="absolute inset-0 bg-hero-grid bg-[size:26px_26px] opacity-40" />
       <div className="container relative flex min-h-screen items-center py-10">
         <div className="grid w-full gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:grid-rows-[auto_auto]">
-          {/* 1 — Intro: mobile primeiro, desktop coluna esquerda linha 1 */}
+          {/* 1 — Intro */}
           <section className="animate-fade-up space-y-8 lg:col-start-1 lg:row-start-1">
-            <Badge className="w-fit border border-brand-teal/10 bg-white/70 px-4 py-2 text-brand-teal shadow-soft" variant="default">
+            <Badge className="w-fit border border-brand-teal/10 bg-white/70 px-4 py-2 text-brand-teal shadow-soft high-contrast:border-yellow-400 high-contrast:bg-black/50 high-contrast:text-yellow-400" variant="default">
               Fatec Zona Leste • Reserva de Salas
             </Badge>
 
             <div className="max-w-2xl space-y-5">
-              <h1 className="font-serif text-5xl leading-tight text-balance text-brand-ink md:text-6xl">
+              <h1 className="font-serif text-5xl leading-tight text-balance text-brand-ink md:text-6xl high-contrast:text-yellow-400">
                 Um acesso organizado, seguro e com aprovação institucional.
               </h1>
-              <p className="max-w-xl text-lg leading-8 text-muted-foreground">
+              <p className="max-w-xl text-lg leading-8 text-muted-foreground high-contrast:text-gray-300">
                 Professores e coordenadores solicitam acesso de forma simples. A aprovação continua centralizada,
                 mantendo o sistema consistente e pronto para a rotina acadêmica.
               </p>
             </div>
           </section>
 
-          {/* 2 — Card de login: mobile segundo (logo abaixo do título), desktop coluna direita abrangendo as 2 linhas */}
-          <Card className="animate-fade-up border-brand-teal/10 bg-white/80 lg:col-start-2 lg:row-start-1 lg:row-span-2">
+          {/* 2 — Card de login */}
+          <Card className="animate-fade-up border-brand-teal/10 bg-white/80 lg:col-start-2 lg:row-start-1 lg:row-span-2 high-contrast:border-yellow-400 high-contrast:bg-gray-900">
             <CardHeader className="space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <Badge variant={isRegisterMode ? 'pending' : 'default'}>
+                <Badge variant={isRegisterMode ? 'pending' : 'default'} className="high-contrast:bg-yellow-400/20 high-contrast:text-yellow-400 high-contrast:border-yellow-400">
                   {isRegisterMode ? 'Solicitação de acesso' : 'Acesso institucional'}
                 </Badge>
-                <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground high-contrast:text-yellow-400">
                   {isRegisterMode ? 'Novo usuário' : 'Login'}
                 </span>
               </div>
-              <CardTitle className="text-3xl text-brand-ink">
+              <CardTitle className="text-3xl text-brand-ink high-contrast:text-yellow-400">
                 {isRegisterMode ? 'Peça sua aprovação' : 'Entre na plataforma'}
               </CardTitle>
-              <CardDescription className="text-base">
+              <CardDescription className="text-base high-contrast:text-gray-300">
                 {isRegisterMode
                   ? 'Seu cadastro será analisado por um coordenador antes da liberação.'
                   : 'Acesse seu painel com as credenciais já aprovadas pelo coordenador.'}
@@ -125,6 +125,7 @@ export function LoginPage() {
                         required
                         value={name}
                         onChange={(event) => setName(event.target.value)}
+                        className="high-contrast:bg-gray-800 high-contrast:text-yellow-400 high-contrast:border-yellow-400 high-contrast:placeholder-gray-500"
                       />
                     </Field>
 
@@ -133,6 +134,7 @@ export function LoginPage() {
                         id="role"
                         value={role}
                         onChange={(event) => setRole(event.target.value as UserRole)}
+                        className="high-contrast:bg-gray-800 high-contrast:text-yellow-400 high-contrast:border-yellow-400"
                       >
                         <option value="PROFESSOR">Usuário professor</option>
                         <option value="COORDENADOR">Coordenador</option>
@@ -150,6 +152,7 @@ export function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
+                    className="high-contrast:bg-gray-800 high-contrast:text-yellow-400 high-contrast:border-yellow-400 high-contrast:placeholder-gray-500"
                   />
                 </Field>
 
@@ -163,11 +166,11 @@ export function LoginPage() {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
-                      className="pr-11"
+                      className="pr-11 high-contrast:bg-gray-800 high-contrast:text-yellow-400 high-contrast:border-yellow-400 high-contrast:placeholder-gray-500"
                     />
                     <button
                       type="button"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-brand-ink transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-brand-ink transition-colors high-contrast:text-yellow-400"
                       onClick={() => setShowPassword((v) => !v)}
                       tabIndex={-1}
                       aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
@@ -178,20 +181,20 @@ export function LoginPage() {
                 </Field>
 
                 {error && (
-                  <div className="rounded-2xl border border-brand-wine/20 bg-brand-wine/5 px-4 py-3 text-sm text-brand-wine">
+                  <div className="rounded-2xl border border-brand-wine/20 bg-brand-wine/5 px-4 py-3 text-sm text-brand-wine high-contrast:border-red-500 high-contrast:bg-red-950 high-contrast:text-red-400">
                     {error}
                   </div>
                 )}
 
                 {success && (
-                  <div className="rounded-2xl border border-brand-teal/20 bg-brand-teal/5 px-4 py-3 text-sm text-brand-teal">
+                  <div className="rounded-2xl border border-brand-teal/20 bg-brand-teal/5 px-4 py-3 text-sm text-brand-teal high-contrast:border-yellow-400 high-contrast:bg-yellow-950 high-contrast:text-yellow-400">
                     {success}
                   </div>
                 )}
 
                 <div className="space-y-3 pt-2">
                   <Button
-                    className="group w-full transition-all duration-200 active:scale-[0.98]"
+                    className="group w-full transition-all duration-200 active:scale-[0.98] high-contrast:bg-yellow-400 high-contrast:text-black high-contrast:hover:bg-yellow-300"
                     disabled={isBusy}
                     size="lg"
                     type="submit"
@@ -218,7 +221,7 @@ export function LoginPage() {
                   </Button>
 
                   <Button
-                    className="w-full"
+                    className="w-full high-contrast:border-yellow-400 high-contrast:text-yellow-400 high-contrast:hover:bg-yellow-400/10"
                     onClick={() => {
                       setIsRegisterMode((current) => !current);
                       setError('');
@@ -232,18 +235,16 @@ export function LoginPage() {
                   </Button>
 
                   <div className="mt-4 text-center text-sm">
-                    <Link className="text-brand-teal hover:underline" to="/esqueci-senha">
+                    <Link className="text-brand-teal hover:underline high-contrast:text-yellow-400" to="/esqueci-senha">
                       Esqueci minha senha
                     </Link>
                   </div>
                 </div>
               </form>
-
-              
             </CardContent>
           </Card>
 
-          {/* 3 — Feature cards: mobile terceiro, desktop coluna esquerda linha 2 */}
+          {/* 3 — Feature cards */}
           <div className="animate-fade-up grid gap-4 md:grid-cols-3 lg:col-start-1 lg:row-start-2 lg:self-end">
             <FeatureCard
               description="Solicitação rápida para professores e coordenadores sem abrir mão da triagem institucional."
@@ -270,7 +271,7 @@ export function LoginPage() {
 function Field({ children, htmlFor, label }: { children: ReactNode; htmlFor: string; label: string }) {
   return (
     <label className="block space-y-2" htmlFor={htmlFor}>
-      <span className="text-sm font-semibold text-brand-ink">{label}</span>
+      <span className="text-sm font-semibold text-brand-ink high-contrast:text-yellow-400">{label}</span>
       {children}
     </label>
   );
@@ -278,10 +279,10 @@ function Field({ children, htmlFor, label }: { children: ReactNode; htmlFor: str
 
 function FeatureCard({ description, icon, title }: { description: string; icon: ReactNode; title: string }) {
   return (
-    <div className="rounded-[24px] border border-white/60 bg-white/70 p-5 shadow-soft backdrop-blur-sm">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-teal text-white">{icon}</div>
-      <h2 className="text-lg font-bold text-brand-ink">{title}</h2>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+    <div className="rounded-[24px] border border-white/60 bg-white/70 p-5 shadow-soft backdrop-blur-sm high-contrast:border-yellow-400 high-contrast:bg-gray-900">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-teal text-white high-contrast:bg-yellow-400 high-contrast:text-black">{icon}</div>
+      <h2 className="text-lg font-bold text-brand-ink high-contrast:text-yellow-400">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground high-contrast:text-gray-300">{description}</p>
     </div>
   );
 }

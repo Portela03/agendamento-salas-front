@@ -1,0 +1,18 @@
+[33m013f72c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mGabriel[m[33m, [m[1;31morigin/Gabriel[m[33m)[m HEAD@{0}: checkout: moving from main to Gabriel
+[33m696c12c[m[33m ([m[1;32mmain[m[33m)[m HEAD@{1}: commit: feat: add high-contrast styles for accessibility improvements across various components
+[33md93f8d7[m HEAD@{2}: pull: Fast-forward
+[33m819a1e2[m HEAD@{3}: checkout: moving from feat/reset-senha to main
+[33m99ab9d6[m[33m ([m[1;31morigin/feat/reset-senha[m[33m, [m[1;32mfeat/reset-senha[m[33m)[m HEAD@{4}: commit: Adionada abas para resetar a senha
+[33m819a1e2[m HEAD@{5}: checkout: moving from main to feat/reset-senha
+[33m819a1e2[m HEAD@{6}: pull: Fast-forward
+[33meb644b9[m HEAD@{7}: pull: Fast-forward
+[33mc27d980[m HEAD@{8}: checkout: moving from Gabriel to main
+[33m013f72c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mGabriel[m[33m, [m[1;31morigin/Gabriel[m[33m)[m HEAD@{9}: checkout: moving from main to Gabriel
+[33mc27d980[m HEAD@{10}: commit: Mudancas menores
+[33m0e29a26[m HEAD@{11}: pull: Fast-forward
+[33m9da7800[m HEAD@{12}: pull: Fast-forward
+[33m013f72c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mGabriel[m[33m, [m[1;31morigin/Gabriel[m[33m)[m HEAD@{13}: checkout: moving from Gabriel to main
+[33m013f72c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mGabriel[m[33m, [m[1;31morigin/Gabriel[m[33m)[m HEAD@{14}: checkout: moving from main to Gabriel
+[33m013f72c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mGabriel[m[33m, [m[1;31morigin/Gabriel[m[33m)[m HEAD@{15}: commit: Adding Salas pages
+[33m209d58d[m HEAD@{16}: pull: Fast-forward
+[33m6838931[m HEAD@{17}: clone: from https://github.com/Portela03/agendamento-salas-front.git

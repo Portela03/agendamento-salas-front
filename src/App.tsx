@@ -28,16 +28,17 @@ export function App() {
         <Route path="/resetar-senha" element={<ResetPasswordPage />} />
 
 
-        {/* Protected: Coordenador only */}
-        <Route element={<PrivateRoute allowedRoles={['COORDENADOR']} />}>
-          <Route element={<AppLayout />}>
-            <Route path="/coordenador/dashboard" element={<CoordinatorDashboard />} />
-            <Route path="/coordenador/salas" element={<ClassManagementPage />} />
-            <Route path="/coordenador/usuarios" element={<GestaoPerfilPage />} />
-            <Route path="/coordenador/calendario" element={<CalendarioPage />} />
-            <Route path="/coordenador/periodos" element={<ControlePeriodosPage />} />
-          </Route>
+      {/* Protected: Coordenador only */}
+      <Route element={<PrivateRoute allowedRoles={['COORDENADOR']} />}>
+        <Route element={<AppLayout />}>
+          <Route path="/coordenador/dashboard" element={<CoordinatorDashboard />} />
+          <Route path="/coordenador/salas" element={<ClassManagementPage />} />
+          <Route path="/coordenador/usuarios" element={<GestaoPerfilPage />} />
+          <Route path="/coordenador/calendario" element={<CalendarioPage />} />
+          <Route path="/coordenador/periodos" element={<ControlePeriodosPage />} />
+          <Route path="/coordenador/historico" element={<HistoricoReservasPage />} />
         </Route>
+      </Route>
 
         {/* Protected: Professor only */}
         <Route element={<PrivateRoute allowedRoles={['PROFESSOR']} />}>

@@ -1,22 +1,36 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, ChevronDown, ChevronRight, LoaderCircle, RefreshCcw, Search } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CalendarDays,
+  ChevronDown,
+  ChevronRight,
+  LoaderCircle,
+  RefreshCcw,
+  Search,
+  XCircle,
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Reserva, reservaService } from '../services/reservaService';
+import { useAuth } from '../hooks/useAuth';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function statusLabel(status: string) {
   if (status === 'APROVADA') return 'Aprovada';
   if (status === 'REJEITADA') return 'Rejeitada';
+  if (status === 'CANCELADA') return 'Cancelada';
   if (status === 'PARCIAL') return 'Parcial';
   return 'Aguardando';
 }
 
-function statusVariant(status: string): 'approved' | 'rejected' | 'waiting' | 'partial' {
+function statusVariant(status: string): 'approved' | 'rejected' | 'waiting' | 'default' | 'partial' {
   if (status === 'APROVADA') return 'approved';
   if (status === 'REJEITADA') return 'rejected';
+  if (status === 'CANCELADA') return 'default';
   if (status === 'PARCIAL') return 'partial';
   return 'waiting';
 }
@@ -32,7 +46,58 @@ function formatHorario(reserva: Reserva) {
   return reserva.horario ?? 'N/D';
 }
 
-// ── Agrupamento ────────────────────────────────────────────────────────────────
+// ── Modal de cancelamento ────────────────────────────────────────────────────
+
+function CancelarModal({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-[24px] border border-brand-wine/20 bg-white p-6 shadow-2xl high-contrast:border-yellow-400 high-contrast:bg-gray-900">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 high-contrast:bg-red-950 high-contrast:text-red-400">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-brand-ink high-contrast:text-yellow-400">
+              Cancelar reserva
+            </h2>
+            <p className="text-sm text-muted-foreground high-contrast:text-gray-300">
+              Tem certeza que deseja cancelar?
+            </p>
+          </div>
+        </div>
+
+        <p className="mb-6 text-sm text-muted-foreground high-contrast:text-gray-300">
+          Esta ação não poderá ser desfeita. A reserva será marcada como cancelada.
+        </p>
+
+        <div className="mt-4 flex gap-3">
+          <Button
+            className="flex-1 bg-rose-600 text-white hover:bg-rose-700 high-contrast:bg-red-600 high-contrast:text-white high-contrast:hover:bg-red-700"
+            onClick={onConfirm}
+          >
+            <XCircle className="mr-2 h-4 w-4" />
+            Confirmar cancelamento
+          </Button>
+          <Button
+            className="flex-1 high-contrast:border-yellow-400 high-contrast:text-yellow-400 high-contrast:hover:bg-yellow-400/10"
+            onClick={onCancel}
+            variant="outline"
+          >
+            Voltar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Agrupamento ──────────────────────────────────────────────────────────────
 
 type GrupoReserva = {
   key: string;
@@ -41,46 +106,102 @@ type GrupoReserva = {
   reservas: Reserva[];
 };
 
-function agrupar(reservas: Reserva[]): GrupoReserva[] {
+function agruparReservas(reservas: Reserva[]): GrupoReserva[] {
   const map: Record<string, GrupoReserva> = {};
-  for (const r of reservas) {
-    const key = r.serieId ? `serie-${r.serieId}` : `reserva-${r.id}`;
+
+  for (const reserva of reservas) {
+    const key = reserva.serieId ? `serie-${reserva.serieId}` : `reserva-${reserva.id}`;
+
     if (!map[key]) {
-      map[key] = { key, isSerie: Boolean(r.serieId), principal: r, reservas: [] };
+      map[key] = {
+        key,
+        isSerie: Boolean(reserva.serieId),
+        principal: reserva,
+        reservas: [],
+      };
     }
-    map[key].reservas.push(r);
+
+    map[key].reservas.push(reserva);
   }
-  // Sort each group by date ascending, pick first as principal
-  for (const g of Object.values(map)) {
-    g.reservas.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
-    g.principal = g.reservas[0];
+
+  for (const grupo of Object.values(map)) {
+    grupo.reservas.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+    grupo.principal = grupo.reservas[0];
   }
-  // Sort groups by createdAt descending (most recently created group first)
+
   return Object.values(map).sort((a, b) => {
-    const createdA = a.principal.createdAt ? new Date(a.principal.createdAt).getTime() : new Date(a.principal.data).getTime();
-    const createdB = b.principal.createdAt ? new Date(b.principal.createdAt).getTime() : new Date(b.principal.data).getTime();
+    const createdA = new Date(a.principal.data).getTime();
+    const createdB = new Date(b.principal.data).getTime();
     return createdB - createdA;
   });
 }
 
-// ── Componente de card individual ────────────────────────────────────────────
+// ── Card de item ─────────────────────────────────────────────────────────────
 
-function ReservaCard({ reserva }: { reserva: Reserva }) {
+function ReservaItem({
+  reserva,
+  onCancelar,
+}: {
+  reserva: Reserva;
+  onCancelar?: (id: string) => void;
+}) {
+  const podeCancelar =
+    onCancelar &&
+    reserva.status !== 'CANCELADA' &&
+    reserva.status !== 'REJEITADA';
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-teal/10 bg-white px-4 py-3 text-sm">
-      <div className="flex items-center gap-3">
-        <CalendarDays className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-        <span className="font-medium text-brand-ink">{formatDate(reserva.data)}</span>
-        <span className="text-muted-foreground">{formatHorario(reserva)}</span>
+    <div className="flex flex-col gap-3 rounded-xl border border-brand-teal/10 bg-white px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <span className="font-medium text-brand-ink">{formatDate(reserva.data)}</span>
+            <span className="text-muted-foreground">{formatHorario(reserva)}</span>
+          </div>
+          <Badge variant={statusVariant(reserva.status ?? '')}>
+            {statusLabel(reserva.status ?? '')}
+          </Badge>
+        </div>
+
+        {reserva.turma && (
+          <p className="text-muted-foreground">
+            <span className="font-medium text-brand-ink">Turma:</span> {reserva.turma}
+          </p>
+        )}
+
+        {reserva.justificativa && (
+          <div className="rounded-lg border border-rose-100 bg-rose-50 px-3 py-1.5 text-xs text-rose-700">
+            <span className="font-semibold">Motivo:</span> {reserva.justificativa}
+          </div>
+        )}
       </div>
-      <Badge variant={statusVariant(reserva.status ?? '')}>{statusLabel(reserva.status ?? '')}</Badge>
+
+      {podeCancelar && (
+        <div className="flex-shrink-0">
+          <Button
+            variant="outline"
+            className="w-full border-rose-200 text-rose-600 hover:bg-rose-50 sm:w-auto"
+            onClick={() => onCancelar(reserva.id)}
+          >
+            <XCircle className="mr-2 h-4 w-4" />
+            Cancelar Reserva
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Componente de grupo ───────────────────────────────────────────────────────
+// ── Card de grupo ────────────────────────────────────────────────────────────
 
-function GrupoCard({ grupo }: { grupo: GrupoReserva }) {
+function GrupoCard({
+  grupo,
+  onCancelar,
+}: {
+  grupo: GrupoReserva;
+  onCancelar?: (id: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const { principal, reservas, isSerie } = grupo;
 
@@ -88,7 +209,9 @@ function GrupoCard({ grupo }: { grupo: GrupoReserva }) {
     if (reservas.some((r) => r.status === 'AGUARDANDO')) return 'AGUARDANDO';
     if (reservas.every((r) => r.status === 'APROVADA')) return 'APROVADA';
     if (reservas.every((r) => r.status === 'REJEITADA')) return 'REJEITADA';
-    // Mixed: some approved, some rejected
+    if (reservas.some((r) => r.status === 'APROVADA') && reservas.some((r) => r.status === 'REJEITADA')) {
+      return 'PARCIAL';
+    }
     return 'PARCIAL';
   })();
 
@@ -96,11 +219,11 @@ function GrupoCard({ grupo }: { grupo: GrupoReserva }) {
   const ultimaData = formatDate(reservas[reservas.length - 1].data);
 
   return (
-    <div className={`overflow-hidden rounded-[24px] border transition-all ${
-      isSerie ? 'border-brand-teal/20' : 'border-brand-teal/10'
-    } bg-gradient-to-r from-white to-brand-mist/20`}>
-
-      {/* Header do card */}
+    <div
+      className={`overflow-hidden rounded-[24px] border transition-all ${
+        isSerie ? 'border-brand-teal/20' : 'border-brand-teal/10'
+      } bg-gradient-to-r from-white to-brand-mist/20`}
+    >
       <div className="p-5 space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
@@ -110,14 +233,15 @@ function GrupoCard({ grupo }: { grupo: GrupoReserva }) {
                   Semestral
                 </span>
               )}
+
               <h2 className="text-base font-bold text-brand-ink">
                 {principal.salaNome ?? principal.salaId}
               </h2>
+
               <Badge variant={statusVariant(statusGeral)}>{statusLabel(statusGeral)}</Badge>
+
               {isSerie && (
-                <span className="text-xs text-muted-foreground">
-                  {reservas.length} aulas
-                </span>
+                <span className="text-xs text-muted-foreground">{reservas.length} aulas</span>
               )}
             </div>
 
@@ -134,14 +258,12 @@ function GrupoCard({ grupo }: { grupo: GrupoReserva }) {
               </p>
               {principal.turma && (
                 <p>
-                  <span className="font-medium text-brand-ink">Turma:</span>{' '}
-                  {principal.turma}
+                  <span className="font-medium text-brand-ink">Turma:</span> {principal.turma}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Botão expandir — apenas para séries */}
           {isSerie && (
             <button
               type="button"
@@ -163,25 +285,25 @@ function GrupoCard({ grupo }: { grupo: GrupoReserva }) {
           )}
         </div>
 
-        {/* Motivo de rejeição (reserva única) */}
         {!isSerie && principal.justificativa && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            <span className="font-semibold">Motivo da rejeição:</span>{' '}
-            {principal.justificativa}
+            <span className="font-semibold">Motivo da rejeição:</span> {principal.justificativa}
           </div>
         )}
       </div>
 
-      {/* Lista expandível de datas da série */}
       {isSerie && expanded && (
         <div className="border-t border-brand-teal/10 bg-white/60 p-4 space-y-2">
-          {/* Resumo de status da série */}
           <div className="mb-3 flex flex-wrap gap-2">
             {(['APROVADA', 'AGUARDANDO', 'REJEITADA'] as const).map((s) => {
               const count = reservas.filter((r) => r.status === s).length;
               if (count === 0) return null;
+
               return (
-                <span key={s} className="inline-flex items-center gap-1 rounded-full border border-brand-teal/10 bg-white px-2.5 py-0.5 text-xs">
+                <span
+                  key={s}
+                  className="inline-flex items-center gap-1 rounded-full border border-brand-teal/10 bg-white px-2.5 py-0.5 text-xs"
+                >
                   <Badge variant={statusVariant(s)} className="h-2 w-2 rounded-full p-0" />
                   {statusLabel(s)}: <strong>{count}</strong>
                 </span>
@@ -190,14 +312,7 @@ function GrupoCard({ grupo }: { grupo: GrupoReserva }) {
           </div>
 
           {reservas.map((r) => (
-            <div key={r.id}>
-              <ReservaCard reserva={r} />
-              {r.justificativa && (
-                <div className="mt-1 ml-4 rounded-lg border border-rose-100 bg-rose-50 px-3 py-1.5 text-xs text-rose-700">
-                  <span className="font-semibold">Motivo:</span> {r.justificativa}
-                </div>
-              )}
-            </div>
+            <ReservaItem key={r.id} reserva={r} onCancelar={onCancelar} />
           ))}
         </div>
       )}
@@ -205,26 +320,38 @@ function GrupoCard({ grupo }: { grupo: GrupoReserva }) {
   );
 }
 
-// ── Lista compartilhada ───────────────────────────────────────────────────────
+// ── Lista compartilhada ──────────────────────────────────────────────────────
 
-function ListaReservas({ reservas, isLoading, error, onRefresh }: {
+function ListaReservas({
+  reservas,
+  isLoading,
+  error,
+  success,
+  onRefresh,
+  onCancelar,
+}: {
   reservas: Reserva[];
   isLoading: boolean;
   error: string;
+  success?: string;
   onRefresh: () => void;
+  onCancelar?: (id: string) => void;
 }) {
-  const grupos = agrupar(reservas);
+  const grupos = agruparReservas(reservas);
 
   return (
     <>
-      <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between border-b border-brand-teal/10 bg-gradient-to-r from-brand-mist/30 via-white to-brand-mist/20 pb-6">
+      <CardHeader className="flex flex-col gap-3 border-b border-brand-teal/10 bg-gradient-to-r from-brand-mist/30 via-white to-brand-mist/20 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-2">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-teal">Histórico de reservas</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-teal">
+            Histórico de reservas
+          </p>
           <CardTitle className="text-3xl text-brand-ink">Reservas já registradas</CardTitle>
           <CardDescription className="max-w-2xl">
-            Reservas únicas aparecem individualmente. Reservas semestrais são agrupadas — clique em "Ver X datas" para expandir.
+            Reservas únicas aparecem individualmente. Reservas semestrais são agrupadas.
           </CardDescription>
         </div>
+
         <Button onClick={onRefresh} variant="secondary">
           <RefreshCcw className="mr-2 h-4 w-4" />
           Atualizar lista
@@ -239,8 +366,14 @@ function ListaReservas({ reservas, isLoading, error, onRefresh }: {
           </div>
         )}
 
+        {success && !isLoading && (
+          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {success}
+          </div>
+        )}
+
         {error && !isLoading && (
-          <div className="rounded-2xl border border-brand-wine/20 bg-brand-wine/5 px-4 py-3 text-sm text-brand-wine">
+          <div className="mb-4 rounded-2xl border border-brand-wine/20 bg-brand-wine/5 px-4 py-3 text-sm text-brand-wine">
             {error}
           </div>
         )}
@@ -260,7 +393,7 @@ function ListaReservas({ reservas, isLoading, error, onRefresh }: {
         {!isLoading && !error && grupos.length > 0 && (
           <div className="grid gap-4">
             {grupos.map((grupo) => (
-              <GrupoCard key={grupo.key} grupo={grupo} />
+              <GrupoCard key={grupo.key} grupo={grupo} onCancelar={onCancelar} />
             ))}
           </div>
         )}
@@ -269,18 +402,27 @@ function ListaReservas({ reservas, isLoading, error, onRefresh }: {
   );
 }
 
-// ── Página completa ───────────────────────────────────────────────────────────
+// ── Página completa ──────────────────────────────────────────────────────────
 
 export function HistoricoReservasPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isCoordenador = user?.role === 'COORDENADOR';
+
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [cancelarReservaId, setCancelarReservaId] = useState<string | null>(null);
 
   async function loadReservas() {
     try {
       setIsLoading(true);
       setError('');
-      const data = await reservaService.listarPorProfessor();
+      setSuccess('');
+      const data = isCoordenador
+        ? await reservaService.listarTodas()
+        : await reservaService.listarPorProfessor();
       setReservas(data);
     } catch {
       setError('Não foi possível carregar o histórico de reservas agora.');
@@ -289,21 +431,61 @@ export function HistoricoReservasPage() {
     }
   }
 
-  useEffect(() => { void loadReservas(); }, []);
+  async function handleCancelar(id: string) {
+    try {
+      setError('');
+      setSuccess('');
+      await reservaService.cancelar(id);
+      setSuccess('Reserva cancelada com sucesso!');
+      await loadReservas();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Não foi possível cancelar a reserva.');
+    }
+  }
+
+  useEffect(() => {
+    void loadReservas();
+  }, [isCoordenador]);
 
   return (
     <div className="min-h-screen bg-transparent">
+      {cancelarReservaId && (
+        <CancelarModal
+          onConfirm={() => {
+            void handleCancelar(cancelarReservaId);
+            setCancelarReservaId(null);
+          }}
+          onCancel={() => setCancelarReservaId(null)}
+        />
+      )}
+
       <div className="container py-8">
         <div className="rounded-[32px] border border-brand-teal/10 bg-white/85 p-8 shadow-panel">
-          <div className="space-y-4">
-            <Badge className="w-fit" variant="default">Área do professor</Badge>
-            <div>
-              <h1 className="font-serif text-4xl leading-tight text-brand-ink md:text-5xl">
-                Histórico de reservas em uma visão clara e organizada.
-              </h1>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-                Consulte as reservas já solicitadas, acompanhe o status e volte para o dashboard quando precisar abrir uma nova solicitação.
-              </p>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-4">
+              <Badge className="w-fit" variant="default">
+                {isCoordenador ? 'Área do coordenador' : 'Área do professor'}
+              </Badge>
+              <div>
+                <h1 className="font-serif text-4xl leading-tight text-brand-ink md:text-5xl">
+                  {isCoordenador
+                    ? 'Histórico de todas as reservas'
+                    : 'Histórico de reservas em uma visão clara e organizada.'}
+                </h1>
+                <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
+                  Consulte as reservas já solicitadas, acompanhe o status e volte para o dashboard quando precisar abrir uma nova solicitação.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                onClick={() => navigate(isCoordenador ? '/coordenador/dashboard' : '/professor/dashboard')}
+                variant="outline"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar ao dashboard
+              </Button>
             </div>
           </div>
         </div>
@@ -314,7 +496,9 @@ export function HistoricoReservasPage() {
             reservas={reservas}
             isLoading={isLoading}
             error={error}
+            success={success}
             onRefresh={() => void loadReservas()}
+            onCancelar={(id) => setCancelarReservaId(id)}
           />
         </Card>
       </div>
@@ -325,15 +509,23 @@ export function HistoricoReservasPage() {
 // ── Versão inline para uso dentro de abas ────────────────────────────────────
 
 export function HistoricoReservasInline() {
+  const { user } = useAuth();
+  const isCoordenador = user?.role === 'COORDENADOR';
+
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [cancelarReservaId, setCancelarReservaId] = useState<string | null>(null);
 
   async function loadReservas() {
     try {
       setIsLoading(true);
       setError('');
-      const data = await reservaService.listarPorProfessor();
+      setSuccess('');
+      const data = isCoordenador
+        ? await reservaService.listarTodas()
+        : await reservaService.listarPorProfessor();
       setReservas(data);
     } catch {
       setError('Não foi possível carregar o histórico de reservas agora.');
@@ -342,16 +534,44 @@ export function HistoricoReservasInline() {
     }
   }
 
-  useEffect(() => { void loadReservas(); }, []);
+  async function handleCancelar(id: string) {
+    try {
+      setError('');
+      setSuccess('');
+      await reservaService.cancelar(id);
+      setSuccess('Reserva cancelada com sucesso!');
+      await loadReservas();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Não foi possível cancelar a reserva.');
+    }
+  }
+
+  useEffect(() => {
+    void loadReservas();
+  }, [isCoordenador]);
 
   return (
-    <Card className="rounded-tl-none border-brand-teal/10 bg-white/85">
-      <ListaReservas
-        reservas={reservas}
-        isLoading={isLoading}
-        error={error}
-        onRefresh={() => void loadReservas()}
-      />
-    </Card>
+    <>
+      {cancelarReservaId && (
+        <CancelarModal
+          onConfirm={() => {
+            void handleCancelar(cancelarReservaId);
+            setCancelarReservaId(null);
+          }}
+          onCancel={() => setCancelarReservaId(null)}
+        />
+      )}
+
+      <Card className="rounded-tl-none border-brand-teal/10 bg-white/85">
+        <ListaReservas
+          reservas={reservas}
+          isLoading={isLoading}
+          error={error}
+          success={success}
+          onRefresh={() => void loadReservas()}
+          onCancelar={(id) => setCancelarReservaId(id)}
+        />
+      </Card>
+    </>
   );
 }

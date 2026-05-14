@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import ContrastToggle from '../ContrastToggle';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -47,6 +48,11 @@ export function Navbar({ onToggleSidebar }: NavbarProps) {
         </span>
       </div>
 
+      {/* Contraste + Right: user dropdown */}
+      <div className="ml-auto flex items-center gap-2">
+        <ContrastToggle /> {/* <-- inserido */}
+      </div>
+      
       {/* Right: user dropdown */}
       {user && (
         <div className="relative" ref={dropdownRef}>

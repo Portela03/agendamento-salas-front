@@ -1,6 +1,6 @@
 import { api } from './api';
 
-export type ReservaStatus = 'AGUARDANDO' | 'APROVADA' | 'REJEITADA';
+export type ReservaStatus = 'AGUARDANDO' | 'APROVADA' | 'REJEITADA' | 'CANCELADA';
 
 export interface PeriodoInativoProfessor {
   chave: string;
@@ -87,6 +87,11 @@ export const reservaService = {
 
   rejeitar: async (id: string, justificativa: string): Promise<Reserva> => {
     const { data } = await api.patch<Reserva>(`/reservas/${id}/rejeitar`, { justificativa });
+    return data;
+  },
+
+  cancelar: async (id: string): Promise<Reserva> => {
+    const { data } = await api.patch<Reserva>(`/reservas/${id}/cancelar`);
     return data;
   },
 
