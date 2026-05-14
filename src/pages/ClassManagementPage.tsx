@@ -1,8 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
-  ArrowLeft,
   Building2,
   FlaskConical,
   GraduationCap,
@@ -58,8 +56,6 @@ function TypeIcon({ type }: { type: ClassType }) {
 }
 
 export default function ClassManagementPage() {
-  const navigate = useNavigate();
-
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [onlyAvailable, setOnlyAvailable] = useState(false);
@@ -206,10 +202,6 @@ export default function ClassManagementPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button variant="outline" onClick={() => navigate('/coordenador/dashboard')}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar
-              </Button>
               <Button variant="outline" onClick={() => setOnlyAvailable((v) => !v)}>
                 {onlyAvailable ? 'Mostrando disponíveis' : 'Apenas disponíveis'}
               </Button>

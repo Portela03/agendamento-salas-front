@@ -21,8 +21,6 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Select } from '../components/ui/select';
 import { Reserva, ReservaStatus, reservaService } from '../services/reservaService';
-import { useNotifications } from '../hooks/useNotifications';
-import { Toast, useToast } from '../components/Toast';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -158,18 +156,6 @@ function PanelMessage({ children, tone }: { children: ReactNode; tone: 'error' |
 // ── Component Principal ───────────────────────────────────────────────────────
 
 export function CoordinatorDashboard() {
-  const { unreadNotifications, markAllAsRead } = useNotifications();
-  const { toasts, addToast, dismiss } = useToast();
-
-  // Show toast for each unread notification then mark all as read
-  useEffect(() => {
-    if (unreadNotifications.length === 0) return;
-    unreadNotifications.forEach((n) => {
-      addToast(n.message, n.type === 'NOVO_USUARIO' ? 'info' : 'info');
-    });
-    void markAllAsRead();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unreadNotifications.length]);
 
   // Reservas
   const [reservas, setReservas] = useState<Reserva[]>([]);
@@ -184,6 +170,7 @@ export function CoordinatorDashboard() {
 
   // Modal rejeitar
   const [rejeitarId, setRejeitarId] = useState<string | null>(null);
+  const [expandedSeries, setExpandedSeries] = useState<Record<string, boolean>>({});
 
   // Salas
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -241,6 +228,18 @@ export function CoordinatorDashboard() {
     }
   }
 
+  async function handleAprovarSerie(serieId: string) {
+    try {
+      setReservasSuccess('');
+      setReservasError('');
+      await reservaService.aprovarSerie(serieId);
+      setReservasSuccess('Reservas da serie aprovadas com sucesso!');
+      await loadReservas();
+    } catch {
+      setReservasError('Nao foi possivel aprovar as reservas da serie.');
+    }
+  }
+
   async function handleRejeitarReserva(id: string, justificativa: string) {
     try {
       setReservasSuccess('');
@@ -261,6 +260,19 @@ export function CoordinatorDashboard() {
     if (filtroPeriodo && r.periodo !== filtroPeriodo) return false;
     return true;
   });
+
+  const reservasAgrupadas = Object.values(
+    reservasFiltradas.reduce<Record<string, { principal: Reserva; reservas: Reserva[]; isSerie: boolean }>>((acc, reserva) => {
+      const key = reserva.serieId ? `serie-${reserva.serieId}` : `reserva-${reserva.id}`;
+      if (!acc[key]) {
+        acc[key] = { principal: reserva, reservas: [], isSerie: Boolean(reserva.serieId) };
+      }
+      acc[key].reservas.push(reserva);
+      acc[key].reservas.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+      acc[key].principal = acc[key].reservas[0];
+      return acc;
+    }, {})
+  );
 
   const classesFiltradas = filtroTipoSala
     ? classes.filter((item) => item.type === filtroTipoSala)
@@ -371,7 +383,7 @@ export function CoordinatorDashboard() {
               {reservasLoading && <PanelMessage tone="info">Carregando reservas...</PanelMessage>}
 
               {/* Lista vazia */}
-              {!reservasLoading && reservasFiltradas.length === 0 && (
+              {!reservasLoading && reservasAgrupadas.length === 0 && (
                 <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-brand-teal/20 bg-brand-mist/20 px-6 py-12 text-center">
                   <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-teal/10 text-brand-teal">
                     <ClipboardList className="h-6 w-6" />
@@ -386,21 +398,34 @@ export function CoordinatorDashboard() {
               )}
 
               {/* Lista de reservas */}
-              {!reservasLoading && reservasFiltradas.length > 0 && (
+              {!reservasLoading && reservasAgrupadas.length > 0 && (
                 <div className="grid gap-4">
-                  {reservasFiltradas.map((reserva) => (
+                  {reservasAgrupadas.map((grupo) => {
+                    const reserva = grupo.principal;
+                    const pendentes = grupo.reservas.filter((item) => item.status === 'AGUARDANDO');
+                    const serieId = reserva.serieId ?? '';
+                    const isExpanded = Boolean(expandedSeries[serieId]);
+                    const primeiraData = formatDate(grupo.reservas[0].data);
+                    const ultimaData = formatDate(grupo.reservas[grupo.reservas.length - 1].data);
+
+                    return (
                     <div
-                      key={reserva.id}
+                      key={grupo.isSerie ? `serie-${serieId}` : reserva.id}
                       className="flex flex-col gap-4 rounded-[24px] border border-brand-teal/10 bg-gradient-to-r from-white to-brand-mist/20 p-5 md:flex-row md:items-start md:justify-between"
                     >
                       <div className="space-y-3 flex-1">
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
                           <h2 className="text-lg font-bold text-brand-ink">
-                            Sala: {reserva.salaNome ?? reserva.salaId}
+                            {grupo.isSerie ? 'Reserva semestral' : 'Sala'}: {reserva.salaNome ?? reserva.salaId}
                           </h2>
-                          <Badge variant={statusVariant(reserva.status)}>
-                            {statusLabel(reserva.status)}
+                          <Badge variant={statusVariant((pendentes.length > 0 ? 'AGUARDANDO' : reserva.status) as ReservaStatus)}>
+                            {statusLabel((pendentes.length > 0 ? 'AGUARDANDO' : reserva.status) as ReservaStatus)}
                           </Badge>
+                          {grupo.isSerie && (
+                            <span className="inline-flex items-center rounded-full bg-brand-teal/10 px-2.5 py-0.5 text-xs font-semibold text-brand-teal">
+                              {grupo.reservas.length} datas · {pendentes.length} pendente{pendentes.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
                         </div>
 
                         <div className="grid gap-1.5 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
@@ -410,7 +435,7 @@ export function CoordinatorDashboard() {
                           </p>
                           <p>
                             <span className="font-medium text-brand-ink">Data:</span>{' '}
-                            {formatDate(reserva.data)}
+                            {grupo.isSerie ? `${primeiraData} ate ${ultimaData}` : formatDate(reserva.data)}
                           </p>
                           <p>
                             <span className="font-medium text-brand-ink">Horário:</span>{' '}
@@ -428,29 +453,72 @@ export function CoordinatorDashboard() {
                             {reserva.justificativa}
                           </div>
                         )}
+
+                        {grupo.isSerie && isExpanded && (
+                          <div className="mt-4 grid gap-2 rounded-2xl border border-brand-teal/10 bg-white/70 p-3">
+                            {grupo.reservas.map((item) => (
+                              <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-sm">
+                                <span className="font-medium text-brand-ink">{formatDate(item.data)}</span>
+                                <span className="text-muted-foreground">{formatHorario(item)}</span>
+                                <Badge variant={statusVariant(item.status)}>{statusLabel(item.status)}</Badge>
+                                {item.status === 'AGUARDANDO' && (
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={() => void handleAprovarReserva(item.id)}>
+                                      Aprovar
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => setRejeitarId(item.id)}>
+                                      Rejeitar
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
-                      {reserva.status === 'AGUARDANDO' && (
+                      {pendentes.length > 0 && (
                         <div className="flex shrink-0 flex-col gap-2 sm:flex-row md:flex-col">
-                          <Button
-                            className="bg-emerald-600 text-white hover:bg-emerald-700"
-                            onClick={() => void handleAprovarReserva(reserva.id)}
-                          >
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Aprovar
-                          </Button>
-                          <Button
-                            className="border-rose-200 text-rose-600 hover:bg-rose-50"
-                            onClick={() => setRejeitarId(reserva.id)}
-                            variant="outline"
-                          >
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Rejeitar
-                          </Button>
+                          {grupo.isSerie ? (
+                            <>
+                              <Button
+                                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                                onClick={() => void handleAprovarSerie(serieId)}
+                              >
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                Aprovar todas
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => setExpandedSeries((prev) => ({ ...prev, [serieId]: !prev[serieId] }))}
+                              >
+                                {isExpanded ? 'Ocultar datas' : 'Aprovar especificas'}
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              className="bg-emerald-600 text-white hover:bg-emerald-700"
+                              onClick={() => void handleAprovarReserva(reserva.id)}
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              Aprovar
+                            </Button>
+                          )}
+                          {!grupo.isSerie && (
+                            <Button
+                              className="border-rose-200 text-rose-600 hover:bg-rose-50"
+                              onClick={() => setRejeitarId(reserva.id)}
+                              variant="outline"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Rejeitar
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -566,8 +634,6 @@ export function CoordinatorDashboard() {
               )}
             </CardContent>
           </Card>
-
-      <Toast toasts={toasts} onDismiss={dismiss} />
     </div>
   );
 }

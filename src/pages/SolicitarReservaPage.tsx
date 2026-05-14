@@ -1,15 +1,13 @@
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, LoaderCircle, Send } from 'lucide-react';
+import { AlertTriangle, CalendarDays, CalendarOff, ChevronLeft, ChevronRight, Clock, LoaderCircle, Send, Star, Sunset } from 'lucide-react';
 
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { api } from '../services/api';
 import { listAvaiables, type ClassItem } from '../services/classService';
 import { fetchCalendario } from '../services/calendarService';
-import type { Reserva } from '../services/reservaService';
-import { buildHolidayMap, getFeriado } from '../lib/holidays';
+import { reservaService, type Reserva } from '../services/reservaService';
+import { buildHolidayMap, getFeriado, getSemestreAtivo, isForaDoPeriodoLetivo } from '../lib/holidays';
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
@@ -17,6 +15,8 @@ const MESES = [
 ];
 
 const SEMANAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+
+type ModoReserva = 'unica' | 'semestre';
 
 function toIsoDate(date: Date): string {
   const yyyy = String(date.getFullYear());
@@ -40,7 +40,7 @@ function getDiasDoMes(ano: number, mes: number): Date[] {
 }
 
 function toMinutes(hhmm: string): number | null {
-  const match = /^(\d{2}):(\d{2})$/.exec(hhmm);
+  const match = /^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d{1,3})?)?$/.exec(hhmm.trim());
   if (!match) return null;
 
   const hours = Number(match[1]);
@@ -51,8 +51,9 @@ function toMinutes(hhmm: string): number | null {
 }
 
 function resolveReservaInterval(reserva: Reserva): { inicio: number; fim: number } | null {
-  const fallbackInicio = reserva.horario?.split('-')[0]?.trim() ?? '';
-  const fallbackFim = reserva.horario?.split('-')[1]?.trim() ?? fallbackInicio;
+  const timeMatches = reserva.horario?.match(/\d{1,2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?/g) ?? [];
+  const fallbackInicio = timeMatches[0]?.trim() ?? '';
+  const fallbackFim = timeMatches[1]?.trim() ?? fallbackInicio;
 
   const inicioStr = (reserva.horarioInicio || fallbackInicio || '').trim();
   const fimStr = (reserva.horarioFim || fallbackFim || inicioStr).trim();
@@ -78,8 +79,33 @@ function isSameDate(a: Date, b: Date): boolean {
   );
 }
 
+function getReservaClassId(reserva: Reserva): string {
+  return reserva.salaId || reserva.classId || '';
+}
+
+function getReservaSemestrePreview(dataInicialIso: string): string[] {
+  if (!dataInicialIso) return [];
+
+  const dataInicial = parseIsoDate(dataInicialIso);
+  const semestre = getSemestreAtivo(dataInicial);
+  if (!semestre) return [];
+
+  const dataFim = parseIsoDate(semestre.terminoAulas);
+  const datas: string[] = [];
+  const cursor = new Date(dataInicial);
+
+  while (cursor <= dataFim) {
+    const feriado = getFeriado(cursor, buildHolidayMap(cursor.getFullYear()));
+    if (cursor.getDay() !== 0 && !feriado) {
+      datas.push(toIsoDate(cursor));
+    }
+    cursor.setDate(cursor.getDate() + 7);
+  }
+
+  return datas;
+}
+
 export function SolicitarReservaPage() {
-  const navigate = useNavigate();
   const now = new Date();
 
   const [mesAtual, setMesAtual] = useState(now.getMonth());
@@ -93,15 +119,14 @@ export function SolicitarReservaPage() {
   const [horarioInicio, setHorarioInicio] = useState('');
   const [horarioFim, setHorarioFim] = useState('');
   const [turma, setTurma] = useState('');
+  const [modoReserva, setModoReserva] = useState<ModoReserva>('unica');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingCalendar, setLoadingCalendar] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  const nowLocal = new Date();
-  const nowMinutes = nowLocal.getHours() * 60 + nowLocal.getMinutes();
+  const [conflitosSemestre, setConflitosSemestre] = useState<string[]>([]);
 
   const inicioMin = useMemo(() => toMinutes(horarioInicio), [horarioInicio]);
   const fimMin = useMemo(() => toMinutes(horarioFim), [horarioFim]);
@@ -169,11 +194,14 @@ export function SolicitarReservaPage() {
 
   const getSalasDisponiveisNoDia = useCallback(
     (date: Date): ClassItem[] => {
+      const nowLocal = new Date();
+      const nowMinutes = nowLocal.getHours() * 60 + nowLocal.getMinutes();
+
       const feriado = getFeriado(date, holidayMapMes);
       const dateZero = new Date(date);
       dateZero.setHours(0, 0, 0, 0);
 
-      if (date.getDay() === 0 || !!feriado || dateZero < hojeZerado) {
+      if (date.getDay() === 0 || !!feriado || isForaDoPeriodoLetivo(date) || dateZero < hojeZerado) {
         return [];
       }
 
@@ -182,8 +210,9 @@ export function SolicitarReservaPage() {
         return sameDay(reservaDate, date) && reserva.status !== 'REJEITADA';
       });
 
-      if (intervaloValido && inicioMin !== null && fimMin !== null && isSameDate(date, nowLocal)) {
-        if (fimMin <= nowMinutes || inicioMin <= nowMinutes) {
+      // Para hoje: bloquear somente se o horário de fim já passou
+      if (intervaloValido && fimMin !== null && isSameDate(date, nowLocal)) {
+        if (fimMin <= nowMinutes) {
           return [];
         }
       }
@@ -193,7 +222,7 @@ export function SolicitarReservaPage() {
       }
 
       return classesDisponiveis.filter((sala) => {
-        const reservasDaSala = reservasNoDia.filter((reserva) => reserva.salaId === sala.id);
+        const reservasDaSala = reservasNoDia.filter((reserva) => getReservaClassId(reserva) === sala.id);
         if (reservasDaSala.length === 0) return true;
 
         return reservasDaSala.every((reserva) => {
@@ -206,21 +235,17 @@ export function SolicitarReservaPage() {
     [classesDisponiveis, fimMin, holidayMapMes, hojeZerado, inicioMin, intervaloValido, reservasMes]
   );
 
-  const disponibilidadePorDia = useMemo(() => {
-    const map = new Map<string, number>();
 
-    for (const dia of diasDoMes) {
-      const iso = toIsoDate(dia);
-      map.set(iso, getSalasDisponiveisNoDia(dia).length);
-    }
-
-    return map;
-  }, [diasDoMes, getSalasDisponiveisNoDia]);
 
   const salasNoDiaSelecionado = useMemo(() => {
     if (!dataSelecionada) return [];
     return getSalasDisponiveisNoDia(parseIsoDate(dataSelecionada));
   }, [dataSelecionada, getSalasDisponiveisNoDia]);
+
+  const previaReservaSemestre = useMemo(
+    () => getReservaSemestrePreview(dataSelecionada),
+    [dataSelecionada]
+  );
 
   useEffect(() => {
     if (!salaId || !dataSelecionada) return;
@@ -256,12 +281,14 @@ export function SolicitarReservaPage() {
     setDataSelecionada(isoDate);
     setError('');
     setSuccess('');
+    setConflitosSemestre([]);
   }
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent, ignorarConflitos = false) {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setConflitosSemestre([]);
 
     if (!turma.trim()) {
       setError('Informe a turma.');
@@ -279,7 +306,9 @@ export function SolicitarReservaPage() {
     }
 
     const dataSelecionadaDate = parseIsoDate(dataSelecionada);
-    if (isSameDate(dataSelecionadaDate, nowLocal) && inicioMin !== null && inicioMin <= nowMinutes) {
+    const _now = new Date();
+    const _nowMinutes = _now.getHours() * 60 + _now.getMinutes();
+    if (isSameDate(dataSelecionadaDate, _now) && inicioMin !== null && inicioMin <= _nowMinutes) {
       setError('Para o dia de hoje, o horario de inicio deve ser maior que o horario atual.');
       return;
     }
@@ -306,15 +335,26 @@ export function SolicitarReservaPage() {
       const [year, month, day] = dataSelecionada.split('-').map(Number);
       const dataLocal = new Date(year, month - 1, day, 12, 0, 0);
 
-      await api.post('/reservas', {
+      const payload = {
         classId: salaId,
         data: dataLocal.toISOString(),
         horarioInicio,
         horarioFim,
         turma: turma.trim(),
-      });
+        ignorarConflitos,
+      };
 
-      setSuccess('Solicitacao enviada com sucesso.');
+      if (modoReserva === 'semestre') {
+        const resultado = await reservaService.criarSemestre(payload);
+        const ignoradas = resultado.datasIgnoradas.length;
+        setSuccess(
+          `Solicitacao semestral enviada: ${resultado.total} reserva${resultado.total !== 1 ? 's' : ''} em ${resultado.semestre}.${ignoradas ? ` ${ignoradas} data${ignoradas !== 1 ? 's' : ''} bloqueada${ignoradas !== 1 ? 's' : ''} foram ignoradas.` : ''}`
+        );
+      } else {
+        await reservaService.criar(payload);
+        setSuccess('Solicitacao enviada com sucesso.');
+      }
+
       setSalaId('');
       setDataSelecionada('');
       setHorarioInicio('');
@@ -323,6 +363,9 @@ export function SolicitarReservaPage() {
       await loadReservasMes();
     } catch (err: any) {
       const serverMsg = err?.response?.data?.message;
+      if (err?.response?.data?.code === 'SEMESTER_CONFLICTS') {
+        setConflitosSemestre(err.response.data.conflitos ?? []);
+      }
       setError(serverMsg ?? 'Nao foi possivel enviar a solicitacao agora.');
     } finally {
       setIsSubmitting(false);
@@ -342,10 +385,6 @@ export function SolicitarReservaPage() {
               </p>
             </div>
 
-            <Button variant="outline" onClick={() => navigate('/professor/dashboard')}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar
-            </Button>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -379,6 +418,39 @@ export function SolicitarReservaPage() {
                   onChange={(e) => setHorarioFim(e.target.value)}
                 />
               </Field>
+            </div>
+
+            <div className="rounded-[20px] border border-brand-teal/10 bg-white/80 p-3">
+              <p className="mb-2 text-sm font-semibold text-brand-ink">Tipo de reserva</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setModoReserva('unica')}
+                  className={`rounded-xl border px-4 py-3 text-left text-sm transition ${modoReserva === 'unica'
+                      ? 'border-brand-teal bg-brand-teal/10 text-brand-ink'
+                      : 'border-brand-teal/15 bg-white text-muted-foreground hover:bg-brand-mist/20'
+                    }`}
+                >
+                  <span className="font-semibold">Reserva unica</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModoReserva('semestre')}
+                  className={`rounded-xl border px-4 py-3 text-left text-sm transition ${modoReserva === 'semestre'
+                      ? 'border-brand-teal bg-brand-teal/10 text-brand-ink'
+                      : 'border-brand-teal/15 bg-white text-muted-foreground hover:bg-brand-mist/20'
+                    }`}
+                >
+                  <span className="font-semibold">Semanal ate o fim do semestre</span>
+                </button>
+              </div>
+              {modoReserva === 'semestre' && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {dataSelecionada && previaReservaSemestre.length > 0
+                    ? `${previaReservaSemestre.length} data${previaReservaSemestre.length !== 1 ? 's' : ''} prevista${previaReservaSemestre.length !== 1 ? 's' : ''}; o sistema valida conflitos antes de criar.`
+                    : 'O sistema valida todas as semanas antes de criar as reservas.'}
+                </p>
+              )}
             </div>
 
             <div className="rounded-[24px] border border-brand-teal/10 bg-white/85 p-4">
@@ -429,9 +501,18 @@ export function SolicitarReservaPage() {
 
                   const isDomingo = dia.getDay() === 0;
                   const isPast = diaZero < hojeZerado;
-                  const bloqueado = isDomingo || !!feriado || isPast;
+                  const foraPeriodo = isForaDoPeriodoLetivo(dia);
+                  const bloqueado = isDomingo || !!feriado || foraPeriodo || isPast;
                   const isSelected = dataSelecionada === isoDate;
-                  const disponiveis = disponibilidadePorDia.get(isoDate) ?? 0;
+
+                  // Visual config por tipo de bloqueio
+                  const blockStyle = isPast
+                    ? { bg: 'bg-slate-100', border: 'border-slate-200', num: 'text-slate-300 line-through', icon: <Clock className="h-3 w-3" />, label: 'Passado', labelColor: 'text-slate-400' }
+                    : isDomingo
+                    ? { bg: 'bg-slate-50', border: 'border-slate-200', num: 'text-slate-400', icon: <Sunset className="h-3 w-3" />, label: 'Domingo', labelColor: 'text-slate-400' }
+                    : feriado
+                    ? { bg: 'bg-amber-50', border: 'border-amber-200', num: 'text-amber-600', icon: <Star className="h-3 w-3" />, label: feriado.label, labelColor: 'text-amber-500' }
+                    : { bg: 'bg-blue-50', border: 'border-blue-200', num: 'text-blue-400', icon: <CalendarOff className="h-3 w-3" />, label: 'Fora do período', labelColor: 'text-blue-400' };
 
                   return (
                     <button
@@ -443,28 +524,22 @@ export function SolicitarReservaPage() {
                         isSelected
                           ? 'border-brand-teal bg-brand-teal/10 ring-2 ring-brand-teal/20'
                           : bloqueado
-                          ? 'border-slate-200 bg-slate-50 text-muted-foreground/60'
-                          : 'border-brand-teal/10 bg-white hover:bg-brand-mist/20'
+                            ? `${blockStyle.border} ${blockStyle.bg}`
+                            : 'border-brand-teal/10 bg-white hover:bg-brand-mist/20'
                       }`}
                     >
-                      <p className="text-sm font-semibold">{dia.getDate()}</p>
-
                       {bloqueado ? (
-                        <p className="mt-1 text-[10px] leading-tight">
-                          {isPast ? 'Dia passado' : isDomingo ? 'Domingo' : 'Feriado'}
-                        </p>
-                      ) : loadingCalendar ? (
-                        <p className="mt-1 text-[10px] leading-tight">Carregando...</p>
+                        <>
+                          <p className={`text-sm font-bold ${blockStyle.num}`}>{dia.getDate()}</p>
+                          <div className={`mt-1.5 flex items-center gap-1 ${blockStyle.labelColor}`}>
+                            {blockStyle.icon}
+                            <p className="line-clamp-1 text-[9px] font-medium leading-tight">{blockStyle.label}</p>
+                          </div>
+                        </>
                       ) : (
                         <>
-                          <p className="mt-1 line-clamp-1 text-[10px] font-semibold text-brand-teal">
-                            {disponiveis} sala{disponiveis !== 1 ? 's' : ''} disponivel{disponiveis !== 1 ? 'eis' : ''}
-                          </p>
-                          {!intervaloValido && (
-                            <p className="mt-1 text-[10px] leading-tight text-muted-foreground">
-                              Defina horario para disponibilidade exata
-                            </p>
-                          )}
+                          <p className="text-sm font-semibold">{dia.getDate()}</p>
+                          {loadingCalendar && <p className="mt-1 text-[10px] leading-tight text-muted-foreground">...</p>}
                         </>
                       )}
                     </button>
@@ -473,11 +548,25 @@ export function SolicitarReservaPage() {
               </div>
             </div>
 
-            {dataSelecionada && (
+            {dataSelecionada && !intervaloValido && (
+              <div className="flex items-center gap-3 rounded-[24px] border border-brand-teal/10 bg-brand-mist/10 px-4 py-3 text-sm text-muted-foreground">
+                <CalendarDays className="h-4 w-4 flex-shrink-0 text-brand-teal" />
+                <p>Dia selecionado: <span className="font-semibold text-brand-ink">{parseIsoDate(dataSelecionada).toLocaleDateString('pt-BR')}</span>. Preencha o horário de início e término para ver as salas disponíveis.</p>
+              </div>
+            )}
+
+            {dataSelecionada && intervaloValido && (
               <div className="rounded-[24px] border border-brand-teal/10 bg-brand-mist/10 p-4">
-                <p className="mb-2 text-sm font-semibold text-brand-ink">
-                  Salas disponiveis em {parseIsoDate(dataSelecionada).toLocaleDateString('pt-BR')}
-                </p>
+                {/* Header: título + badge */}
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-brand-ink">
+                    Salas disponíveis em {parseIsoDate(dataSelecionada).toLocaleDateString('pt-BR')}
+                  </p>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-teal px-3 py-1 text-sm font-bold text-white shadow-sm">
+                    {salasNoDiaSelecionado.length}
+                    <span className="font-normal opacity-90">{salasNoDiaSelecionado.length === 1 ? 'sala' : 'salas'}</span>
+                  </span>
+                </div>
 
                 {loadingClasses ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -490,24 +579,42 @@ export function SolicitarReservaPage() {
                     Nenhuma sala disponivel nesse dia para o horario informado.
                   </div>
                 ) : (
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {salasNoDiaSelecionado.map((sala) => (
-                      <button
-                        key={sala.id}
-                        type="button"
-                        onClick={() => setSalaId(sala.id)}
-                        className={`rounded-xl border p-3 text-left transition ${
-                          sala.id === salaId
-                            ? 'border-brand-teal bg-brand-teal/10'
-                            : 'border-brand-teal/15 bg-white hover:bg-brand-mist/20'
-                        }`}
-                      >
-                        <p className="font-semibold text-brand-ink">{sala.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {sala.type} - Capacidade: {sala.capacity}
-                        </p>
-                      </button>
-                    ))}
+                  <div className="space-y-4">
+                    {(['AUDITORIO', 'SALA', 'LABORATORIO'] as const).map((tipo) => {
+                      const grupo = salasNoDiaSelecionado.filter(s => s.type === tipo);
+                      if (grupo.length === 0) return null;
+                      const labelInfo = tipo === 'AUDITORIO'
+                        ? { label: 'Auditórios', color: 'bg-violet-600' }
+                        : tipo === 'SALA'
+                        ? { label: 'Salas', color: 'bg-brand-wine' }
+                        : { label: 'Laboratórios', color: 'bg-brand-teal' };
+                      return (
+                        <div key={tipo}>
+                          <div className="mb-2 flex items-center gap-2">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold text-white ${labelInfo.color}`}>
+                              {labelInfo.label}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{grupo.length} disponível{grupo.length !== 1 ? 'eis' : ''}</span>
+                          </div>
+                          <div className="grid gap-2 md:grid-cols-2">
+                            {grupo.map((sala) => (
+                              <button
+                                key={sala.id}
+                                type="button"
+                                onClick={() => setSalaId(sala.id)}
+                                className={`rounded-xl border p-3 text-left transition ${sala.id === salaId
+                                    ? 'border-brand-teal bg-brand-teal/10'
+                                    : 'border-brand-teal/15 bg-white hover:bg-brand-mist/20'
+                                  }`}
+                              >
+                                <p className="font-semibold text-brand-ink">{sala.name}</p>
+                                <p className="text-xs text-muted-foreground">Capacidade: {sala.capacity}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -521,8 +628,8 @@ export function SolicitarReservaPage() {
                     {feriadoAviso.label === 'Domingo'
                       ? 'Domingo'
                       : feriadoAviso.tipo === 'academico'
-                      ? 'Recesso Academico'
-                      : 'Feriado Nacional'}
+                        ? 'Recesso Academico'
+                        : 'Feriado Nacional'}
                   </p>
                   <p>
                     {feriadoAviso.label === 'Domingo'
@@ -541,10 +648,12 @@ export function SolicitarReservaPage() {
             )}
 
             {dataSelecionada && intervaloValido && (() => {
+              const _now = new Date();
+              const _nowMin = _now.getHours() * 60 + _now.getMinutes();
               const dia = parseIsoDate(dataSelecionada);
-              const isHoje = isSameDate(dia, nowLocal);
+              const isHoje = isSameDate(dia, _now);
               if (!isHoje || inicioMin === null) return null;
-              if (inicioMin > nowMinutes) return null;
+              if (inicioMin > _nowMin) return null;
               return (
                 <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
@@ -554,6 +663,16 @@ export function SolicitarReservaPage() {
             })()}
 
             {error && <p className="text-sm text-red-600">{error}</p>}
+            {modoReserva === 'semestre' && conflitosSemestre.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSubmitting}
+                onClick={() => void handleSubmit({ preventDefault() { } } as FormEvent, true)}
+              >
+                Reservar pulando datas com conflito
+              </Button>
+            )}
             {success && <p className="text-sm text-green-600">{success}</p>}
 
             <Button
@@ -571,7 +690,7 @@ export function SolicitarReservaPage() {
               }
               type="submit"
             >
-              {isSubmitting ? 'Enviando...' : 'Solicitar reserva'}
+              {isSubmitting ? 'Enviando...' : modoReserva === 'semestre' ? 'Solicitar reservas do semestre' : 'Solicitar reserva'}
               <Send className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </Button>
           </form>
@@ -606,15 +725,14 @@ export function SolicitarReservaInline() {
   const [horarioInicio, setHorarioInicio] = useState('');
   const [horarioFim, setHorarioFim] = useState('');
   const [turma, setTurma] = useState('');
+  const [modoReserva, setModoReserva] = useState<ModoReserva>('unica');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingCalendar, setLoadingCalendar] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  const nowLocal = new Date();
-  const nowMinutes = nowLocal.getHours() * 60 + nowLocal.getMinutes();
+  const [conflitosSemestre, setConflitosSemestre] = useState<string[]>([]);
 
   const inicioMin = useMemo(() => toMinutes(horarioInicio), [horarioInicio]);
   const fimMin = useMemo(() => toMinutes(horarioFim), [horarioFim]);
@@ -669,19 +787,23 @@ export function SolicitarReservaInline() {
 
   const getSalasDisponiveisNoDia = useCallback(
     (date: Date): ClassItem[] => {
+      const nowLocal = new Date();
+      const nowMinutes = nowLocal.getHours() * 60 + nowLocal.getMinutes();
+
       const feriado = getFeriado(date, holidayMapMes);
       const dateZero = new Date(date); dateZero.setHours(0, 0, 0, 0);
-      if (date.getDay() === 0 || !!feriado || dateZero < hojeZerado) return [];
+      if (date.getDay() === 0 || !!feriado || isForaDoPeriodoLetivo(date) || dateZero < hojeZerado) return [];
       const reservasNoDia = reservasMes.filter((reserva) => {
         const reservaDate = new Date(reserva.data);
         return sameDay(reservaDate, date) && reserva.status !== 'REJEITADA';
       });
-      if (intervaloValido && inicioMin !== null && fimMin !== null && isSameDate(date, nowLocal)) {
-        if (fimMin <= nowMinutes || inicioMin <= nowMinutes) return [];
+      // Para hoje: bloquear somente se o horário de fim já passou
+      if (intervaloValido && fimMin !== null && isSameDate(date, nowLocal)) {
+        if (fimMin <= nowMinutes) return [];
       }
       if (!intervaloValido || inicioMin === null || fimMin === null) return classesDisponiveis;
       return classesDisponiveis.filter((sala) => {
-        const reservasDaSala = reservasNoDia.filter((reserva) => reserva.salaId === sala.id);
+        const reservasDaSala = reservasNoDia.filter((reserva) => getReservaClassId(reserva) === sala.id);
         if (reservasDaSala.length === 0) return true;
         return reservasDaSala.every((reserva) => {
           const intervalo = resolveReservaInterval(reserva);
@@ -693,16 +815,17 @@ export function SolicitarReservaInline() {
     [classesDisponiveis, fimMin, holidayMapMes, hojeZerado, inicioMin, intervaloValido, reservasMes]
   );
 
-  const disponibilidadePorDia = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const dia of diasDoMes) { map.set(toIsoDate(dia), getSalasDisponiveisNoDia(dia).length); }
-    return map;
-  }, [diasDoMes, getSalasDisponiveisNoDia]);
+
 
   const salasNoDiaSelecionado = useMemo(() => {
     if (!dataSelecionada) return [];
     return getSalasDisponiveisNoDia(parseIsoDate(dataSelecionada));
   }, [dataSelecionada, getSalasDisponiveisNoDia]);
+
+  const previaReservaSemestre = useMemo(
+    () => getReservaSemestrePreview(dataSelecionada),
+    [dataSelecionada]
+  );
 
   useEffect(() => {
     if (!salaId || !dataSelecionada) return;
@@ -723,16 +846,19 @@ export function SolicitarReservaInline() {
     setDataSelecionada(toIsoDate(date));
     setError('');
     setSuccess('');
+    setConflitosSemestre([]);
   }
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent, ignorarConflitos = false) {
     e.preventDefault();
-    setError(''); setSuccess('');
+    setError(''); setSuccess(''); setConflitosSemestre([]);
     if (!turma.trim()) { setError('Informe a turma.'); return; }
     if (!intervaloPreenchido || !intervaloValido) { setError('Informe horario de inicio e termino validos.'); return; }
     if (!dataSelecionada) { setError('Selecione um dia no calendario.'); return; }
     const dataSelecionadaDate = parseIsoDate(dataSelecionada);
-    if (isSameDate(dataSelecionadaDate, nowLocal) && inicioMin !== null && inicioMin <= nowMinutes) {
+    const _now = new Date();
+    const _nowMinutes = _now.getHours() * 60 + _now.getMinutes();
+    if (isSameDate(dataSelecionadaDate, _now) && inicioMin !== null && inicioMin <= _nowMinutes) {
       setError('Para o dia de hoje, o horario de inicio deve ser maior que o horario atual.'); return;
     }
     if (feriadoAviso) { setError(`Nao e possivel agendar em feriado/recesso: ${feriadoAviso.label}.`); return; }
@@ -743,15 +869,30 @@ export function SolicitarReservaInline() {
     try {
       setIsSubmitting(true);
       const [year, month, day] = dataSelecionada.split('-').map(Number);
-      await api.post('/reservas', {
+      const payload = {
         classId: salaId,
         data: new Date(year, month - 1, day, 12, 0, 0).toISOString(),
         horarioInicio, horarioFim, turma: turma.trim(),
-      });
-      setSuccess('Solicitacao enviada com sucesso.');
+        ignorarConflitos,
+      };
+
+      if (modoReserva === 'semestre') {
+        const resultado = await reservaService.criarSemestre(payload);
+        const ignoradas = resultado.datasIgnoradas.length;
+        setSuccess(
+          `Solicitacao semestral enviada: ${resultado.total} reserva${resultado.total !== 1 ? 's' : ''} em ${resultado.semestre}.${ignoradas ? ` ${ignoradas} data${ignoradas !== 1 ? 's' : ''} bloqueada${ignoradas !== 1 ? 's' : ''} foram ignoradas.` : ''}`
+        );
+      } else {
+        await reservaService.criar(payload);
+        setSuccess('Solicitacao enviada com sucesso.');
+      }
+
       setSalaId(''); setDataSelecionada(''); setHorarioInicio(''); setHorarioFim(''); setTurma('');
       await loadReservasMes();
     } catch (err: any) {
+      if (err?.response?.data?.code === 'SEMESTER_CONFLICTS') {
+        setConflitosSemestre(err.response.data.conflitos ?? []);
+      }
       setError(err?.response?.data?.message ?? 'Nao foi possivel enviar a solicitacao agora.');
     } finally {
       setIsSubmitting(false);
@@ -771,6 +912,39 @@ export function SolicitarReservaInline() {
           <Field htmlFor="horarioFim-inline" label="Horário de término">
             <input id="horarioFim-inline" type="time" className="w-full rounded-xl border border-brand-teal/20 bg-white px-3 py-2 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-teal/30" required value={horarioFim} onChange={(e) => setHorarioFim(e.target.value)} />
           </Field>
+        </div>
+
+        <div className="rounded-[20px] border border-brand-teal/10 bg-white/80 p-3">
+          <p className="mb-2 text-sm font-semibold text-brand-ink">Tipo de reserva</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setModoReserva('unica')}
+              className={`rounded-xl border px-4 py-3 text-left text-sm transition ${modoReserva === 'unica'
+                  ? 'border-brand-teal bg-brand-teal/10 text-brand-ink'
+                  : 'border-brand-teal/15 bg-white text-muted-foreground hover:bg-brand-mist/20'
+                }`}
+            >
+              <span className="font-semibold">Reserva unica</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setModoReserva('semestre')}
+              className={`rounded-xl border px-4 py-3 text-left text-sm transition ${modoReserva === 'semestre'
+                  ? 'border-brand-teal bg-brand-teal/10 text-brand-ink'
+                  : 'border-brand-teal/15 bg-white text-muted-foreground hover:bg-brand-mist/20'
+                }`}
+            >
+              <span className="font-semibold">Semanal ate o fim do semestre</span>
+            </button>
+          </div>
+          {modoReserva === 'semestre' && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {dataSelecionada && previaReservaSemestre.length > 0
+                ? `${previaReservaSemestre.length} data${previaReservaSemestre.length !== 1 ? 's' : ''} prevista${previaReservaSemestre.length !== 1 ? 's' : ''}; o sistema valida conflitos antes de criar.`
+                : 'O sistema valida todas as semanas antes de criar as reservas.'}
+            </p>
+          )}
         </div>
 
         {/* Calendário de seleção */}
@@ -802,26 +976,40 @@ export function SolicitarReservaInline() {
               const diaZero = new Date(dia); diaZero.setHours(0, 0, 0, 0);
               const isDomingo = dia.getDay() === 0;
               const isPast = diaZero < hojeZerado;
-              const bloqueado = isDomingo || !!feriado || isPast;
+              const foraPeriodo = isForaDoPeriodoLetivo(dia);
+              const bloqueado = isDomingo || !!feriado || foraPeriodo || isPast;
               const isSelected = dataSelecionada === iso;
-              const disponiveis = disponibilidadePorDia.get(iso) ?? 0;
+
+              // Visual config por tipo de bloqueio
+              const blockStyle = isPast
+                ? { bg: 'bg-slate-100', border: 'border-slate-200', num: 'text-slate-300 line-through', icon: <Clock className="h-3 w-3" />, label: 'Passado', labelColor: 'text-slate-400' }
+                : isDomingo
+                ? { bg: 'bg-slate-50', border: 'border-slate-200', num: 'text-slate-400', icon: <Sunset className="h-3 w-3" />, label: 'Domingo', labelColor: 'text-slate-400' }
+                : feriado
+                ? { bg: 'bg-amber-50', border: 'border-amber-200', num: 'text-amber-600', icon: <Star className="h-3 w-3" />, label: feriado.label, labelColor: 'text-amber-500' }
+                : { bg: 'bg-blue-50', border: 'border-blue-200', num: 'text-blue-400', icon: <CalendarOff className="h-3 w-3" />, label: 'Fora do período', labelColor: 'text-blue-400' };
+
               return (
                 <button key={iso} type="button" disabled={bloqueado || loadingClasses} onClick={() => onSelectDia(dia)}
                   className={`min-h-[88px] rounded-xl border p-2 text-left transition ${
                     isSelected ? 'border-brand-teal bg-brand-teal/10 ring-2 ring-brand-teal/20'
-                    : bloqueado ? 'border-slate-200 bg-slate-50 text-muted-foreground/60'
-                    : 'border-brand-teal/10 bg-white hover:bg-brand-mist/20'
+                      : bloqueado ? `${blockStyle.border} ${blockStyle.bg}`
+                        : 'border-brand-teal/10 bg-white hover:bg-brand-mist/20'
                   }`}
                 >
-                  <p className="text-sm font-semibold">{dia.getDate()}</p>
                   {bloqueado ? (
-                    <p className="mt-1 text-[10px] leading-tight">{isPast ? 'Dia passado' : isDomingo ? 'Domingo' : 'Feriado'}</p>
-                  ) : loadingCalendar ? (
-                    <p className="mt-1 text-[10px] leading-tight">Carregando...</p>
+                    <>
+                      <p className={`text-sm font-bold ${blockStyle.num}`}>{dia.getDate()}</p>
+                      <div className={`mt-1.5 flex items-center gap-1 ${blockStyle.labelColor}`}>
+                        {blockStyle.icon}
+                        <p className="line-clamp-1 text-[9px] font-medium leading-tight">{blockStyle.label}</p>
+                      </div>
+                    </>
                   ) : (
-                        <p className="mt-1 line-clamp-1 text-[10px] font-semibold text-brand-teal">
-                          {disponiveis} {disponiveis === 1 ? 'sala disponível' : 'salas disponíveis'}
-                        </p>
+                    <>
+                      <p className="text-sm font-semibold">{dia.getDate()}</p>
+                      {loadingCalendar && <p className="mt-1 text-[10px] leading-tight text-muted-foreground">...</p>}
+                    </>
                   )}
                 </button>
               );
@@ -830,11 +1018,26 @@ export function SolicitarReservaInline() {
         </div>
 
         {/* Salas disponíveis no dia selecionado */}
-        {dataSelecionada && (
+        {dataSelecionada && !intervaloValido && (
+          <div className="flex items-center gap-3 rounded-[24px] border border-brand-teal/10 bg-brand-mist/10 px-4 py-3 text-sm text-muted-foreground">
+            <CalendarDays className="h-4 w-4 flex-shrink-0 text-brand-teal" />
+            <p>Dia selecionado: <span className="font-semibold text-brand-ink">{parseIsoDate(dataSelecionada).toLocaleDateString('pt-BR')}</span>. Preencha o horário de início e término para ver as salas disponíveis.</p>
+          </div>
+        )}
+
+        {dataSelecionada && intervaloValido && (
           <div className="rounded-[24px] border border-brand-teal/10 bg-brand-mist/10 p-4">
-            <p className="mb-2 text-sm font-semibold text-brand-ink">
-              Salas disponíveis em {parseIsoDate(dataSelecionada).toLocaleDateString('pt-BR')}
-            </p>
+            {/* Header: título + badge */}
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-brand-ink">
+                Salas disponíveis em {parseIsoDate(dataSelecionada).toLocaleDateString('pt-BR')}
+              </p>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-teal px-3 py-1 text-sm font-bold text-white shadow-sm">
+                {salasNoDiaSelecionado.length}
+                <span className="font-normal opacity-90">{salasNoDiaSelecionado.length === 1 ? 'sala' : 'salas'}</span>
+              </span>
+            </div>
+
             {loadingClasses ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <LoaderCircle className="h-4 w-4 animate-spin" /> Carregando salas...
@@ -844,17 +1047,36 @@ export function SolicitarReservaInline() {
                 <CalendarDays className="h-4 w-4" /> Nenhuma sala disponível nesse dia para o horário informado.
               </div>
             ) : (
-              <div className="grid gap-2 md:grid-cols-2">
-                {salasNoDiaSelecionado.map((sala) => (
-                  <button key={sala.id} type="button" onClick={() => setSalaId(sala.id)}
-                    className={`rounded-xl border p-3 text-left transition ${
-                      sala.id === salaId ? 'border-brand-teal bg-brand-teal/10' : 'border-brand-teal/15 bg-white hover:bg-brand-mist/20'
-                    }`}
-                  >
-                    <p className="font-semibold text-brand-ink">{sala.name}</p>
-                    <p className="text-xs text-muted-foreground">{sala.type} - Capacidade: {sala.capacity}</p>
-                  </button>
-                ))}
+              <div className="space-y-4">
+                {(['AUDITORIO', 'SALA', 'LABORATORIO'] as const).map((tipo) => {
+                  const grupo = salasNoDiaSelecionado.filter(s => s.type === tipo);
+                  if (grupo.length === 0) return null;
+                  const labelInfo = tipo === 'AUDITORIO'
+                    ? { label: 'Auditórios', color: 'bg-violet-600' }
+                    : tipo === 'SALA'
+                    ? { label: 'Salas', color: 'bg-brand-wine' }
+                    : { label: 'Laboratórios', color: 'bg-brand-teal' };
+                  return (
+                    <div key={tipo}>
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold text-white ${labelInfo.color}`}>
+                          {labelInfo.label}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{grupo.length} disponível{grupo.length !== 1 ? 'eis' : ''}</span>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {grupo.map((sala) => (
+                          <button key={sala.id} type="button" onClick={() => setSalaId(sala.id)}
+                            className={`rounded-xl border p-3 text-left transition ${sala.id === salaId ? 'border-brand-teal bg-brand-teal/10' : 'border-brand-teal/15 bg-white hover:bg-brand-mist/20'}`}
+                          >
+                            <p className="font-semibold text-brand-ink">{sala.name}</p>
+                            <p className="text-xs text-muted-foreground">Capacidade: {sala.capacity}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -877,6 +1099,16 @@ export function SolicitarReservaInline() {
           </div>
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
+        {modoReserva === 'semestre' && conflitosSemestre.length > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSubmitting}
+            onClick={() => void handleSubmit({ preventDefault() { } } as FormEvent, true)}
+          >
+            Reservar pulando datas com conflito
+          </Button>
+        )}
         {success && <p className="text-sm text-green-600">{success}</p>}
 
         <Button
@@ -884,7 +1116,7 @@ export function SolicitarReservaInline() {
           disabled={isSubmitting || loadingClasses || loadingCalendar || classesDisponiveis.length === 0 || !!feriadoAviso || !intervaloValido || !dataSelecionada || !salaId || !turma.trim()}
           type="submit"
         >
-          {isSubmitting ? 'Enviando...' : 'Solicitar reserva'}
+          {isSubmitting ? 'Enviando...' : modoReserva === 'semestre' ? 'Solicitar reservas do semestre' : 'Solicitar reserva'}
           <Send className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </Button>
       </form>
