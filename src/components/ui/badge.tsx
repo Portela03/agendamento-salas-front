@@ -15,6 +15,7 @@ const badgeVariants = cva(
         approved: 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200',
         rejected: 'bg-rose-100 text-rose-700 ring-1 ring-rose-200',
         waiting: 'bg-amber-100 text-amber-700 ring-1 ring-amber-200',
+        partial: 'bg-orange-100 text-orange-700 ring-1 ring-orange-200',
       },
     },
     defaultVariants: {

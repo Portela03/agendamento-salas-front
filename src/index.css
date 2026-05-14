@@ -374,6 +374,11 @@
   html.high-contrast aside .border-brand-wine {
     border-color: rgb(255 255 255) !important;
   }
+
+  .bg-slate-100 {
+    --tw-bg-opacity: 1;
+    background-color: rgb(0 0 0);
+  }
 }
 
 @layer utilities {

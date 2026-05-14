@@ -12,17 +12,20 @@ import { ControlePeriodosPage } from './pages/ControlePeriodosPage';
 import { useKeepAlive } from './hooks/useKeepAlive';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { FontSizeControls } from './components/accessibility/FontSizeControls';
 
 export function App() {
   // Pings /api/health every 10 min so the Render free-tier backend never sleeps.
   useKeepAlive();
 
   return (
-    <Routes>
-      {/* Public */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
-      <Route path="/resetar-senha" element={<ResetPasswordPage />} />
+    <>
+      <FontSizeControls />
+      <Routes>
+        {/* Public */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
+        <Route path="/resetar-senha" element={<ResetPasswordPage />} />
 
 
       {/* Protected: Coordenador only */}
@@ -37,18 +40,19 @@ export function App() {
         </Route>
       </Route>
 
-      {/* Protected: Professor only */}
-      <Route element={<PrivateRoute allowedRoles={['PROFESSOR']} />}>
-        <Route element={<AppLayout />}>
-          <Route path="/professor/dashboard" element={<Navigate to="/professor/reservas" replace />} />
-          <Route path="/professor/reservas" element={<SolicitarReservaPage />} />
-          <Route path="/professor/historicoreservas" element={<HistoricoReservasPage />} />
-          <Route path="/professor/calendario" element={<CalendarioPage />} />
+        {/* Protected: Professor only */}
+        <Route element={<PrivateRoute allowedRoles={['PROFESSOR']} />}>
+          <Route element={<AppLayout />}>
+            <Route path="/professor/dashboard" element={<Navigate to="/professor/reservas" replace />} />
+            <Route path="/professor/reservas" element={<SolicitarReservaPage />} />
+            <Route path="/professor/historicoreservas" element={<HistoricoReservasPage />} />
+            <Route path="/professor/calendario" element={<CalendarioPage />} />
+          </Route>
         </Route>
-      </Route>
 
-      {/* Catch-all */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </>
   );
 }

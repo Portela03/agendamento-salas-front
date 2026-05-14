@@ -13,6 +13,7 @@ export interface PeriodoInativoProfessor {
 export interface Reserva {
   id: string;
   professorId: string;
+  classId?: string;
   salaId: string;
   data: string;
   horario: string;
@@ -21,6 +22,9 @@ export interface Reserva {
   turma?: string;
   periodo?: string;
   semestre?: string;
+  serieId?: string;
+  serieTotal?: number;
+  serieOrdem?: number;
   status: ReservaStatus;
   justificativa?: string;
   createdAt: string;
@@ -28,7 +32,39 @@ export interface Reserva {
   salaNome?: string;
 }
 
+export interface CriarReservaPayload {
+  classId: string;
+  data: string;
+  horarioInicio: string;
+  horarioFim: string;
+  turma: string;
+  ignorarConflitos?: boolean;
+}
+
+export interface CriarReservasSemestreResponse {
+  reservas: Reserva[];
+  total: number;
+  semestre: string;
+  datasIgnoradas: Array<{
+    data: string;
+    motivo: string;
+  }>;
+}
+
 export const reservaService = {
+  criar: async (payload: CriarReservaPayload): Promise<Reserva> => {
+    const { data } = await api.post<Reserva>('/reservas', payload);
+    return data;
+  },
+
+  criarSemestre: async (payload: CriarReservaPayload): Promise<CriarReservasSemestreResponse> => {
+    const { data } = await api.post<CriarReservasSemestreResponse>('/reservas/semestre', {
+      ...payload,
+      dataInicial: payload.data,
+    });
+    return data;
+  },
+
   listarTodas: async (): Promise<Reserva[]> => {
     const { data } = await api.get<Reserva[]>('/reservas');
     return data;
@@ -41,6 +77,11 @@ export const reservaService = {
 
   aprovar: async (id: string): Promise<Reserva> => {
     const { data } = await api.patch<Reserva>(`/reservas/${id}/aprovar`);
+    return data;
+  },
+
+  aprovarSerie: async (serieId: string): Promise<Reserva[]> => {
+    const { data } = await api.patch<Reserva[]>(`/reservas/serie/${serieId}/aprovar`);
     return data;
   },
 
