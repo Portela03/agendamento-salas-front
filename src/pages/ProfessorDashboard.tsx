@@ -1,31 +1,9 @@
-import { useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useNotifications } from '../hooks/useNotifications';
-import { Toast, useToast } from '../components/Toast';
+
 import { SolicitarReservaInline } from './SolicitarReservaPage';
 
 export function ProfessorDashboard() {
   const { user } = useAuth();
-  const { unreadNotifications, markAllAsRead } = useNotifications();
-  const { toasts, addToast, dismiss } = useToast();
-
-  useEffect(() => {
-    if (unreadNotifications.length === 0) return;
-
-    unreadNotifications.forEach((n) => {
-      const type =
-        n.type === 'RESERVA_APROVADA'
-          ? 'success'
-          : n.type === 'RESERVA_REJEITADA'
-          ? 'error'
-          : 'info';
-      addToast(n.message, type);
-    });
-
-    void markAllAsRead();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unreadNotifications.length]);
-
   return (
     <div className="container py-8">
       <div className="mb-6">
@@ -39,7 +17,7 @@ export function ProfessorDashboard() {
 
       <SolicitarReservaInline />
 
-      <Toast toasts={toasts} onDismiss={dismiss} />
+
     </div>
   );
 }

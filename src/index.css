@@ -317,14 +317,11 @@
   }
 
   /* Alto contraste: bordas de botões com branco */
-  html.high-contrast button.border-border,
-  html.high-contrast button[class*="border"] {
-    border-color: hsl(0deg 0% 100%) !important;
-  }
+
 
   /* Se quiser ser mais específico para buttons com classe outline */
   html.high-contrast button[variant="outline"],
-  html.high-contrast .bg-white.border-border {
+  html.high-contrast .bg-white.border {
     border-color: rgb(255 255 255) !important;
   }
   
