@@ -1,5 +1,12 @@
 import { api } from './api';
 
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
 export type ClassType = 'LABORATORIO' | 'SALA' | 'AUDITORIO';
 export type ClassStatus = 'DISPONIVEL' | 'INDISPONIVEL';
 
@@ -68,11 +75,12 @@ function normalizeList(data: any): ClassItem[] {
   return raw.map((item: ApiClass) => normalizeClass(item));
 }
 
-async function getWithFallback(endpoints: string[]) {
+async function getWithFallback(endpoints: string[], config: any = {}) {
   let lastError: unknown;
   for (const endpoint of endpoints) {
     try {
-      return await api.get(endpoint, getAuthConfig());
+      const authConfig = getAuthConfig();
+      return await api.get(endpoint, { ...authConfig, ...config });
     } catch (error) {
       lastError = error;
     }
@@ -80,6 +88,37 @@ async function getWithFallback(endpoints: string[]) {
   throw lastError;
 }
 
+export async function listClassesPaginated(onlyAvailable = false, page = 1, limit = 8): Promise<PaginatedResult<ClassItem>> {
+  const endpoints = onlyAvailable
+    ? ['/class/avaiables', '/class/available']
+    : ['/class', '/class/listall', '/class/listAll'];
+
+  const { data } = await getWithFallback(endpoints, { params: { page, limit } });
+  
+  if (data?.data && typeof data.total === 'number') {
+    return {
+      data: data.data.map((item: ApiClass) => normalizeClass(item)),
+      total: data.total,
+      page: data.page,
+      totalPages: data.totalPages,
+    };
+  }
+
+  const raw = Array.isArray(data) ? data : Array.isArray(data?.classes) ? data.classes : Array.isArray(data?.class) ? data.class : Array.isArray(data?.data) ? data.data : [];
+  const normalized = raw.map((item: ApiClass) => normalizeClass(item));
+  
+  const total = normalized.length;
+  const totalPages = Math.ceil(total / limit);
+  const offset = (page - 1) * limit;
+  const pagedData = normalized.slice(offset, offset + limit);
+  
+  return {
+    data: pagedData,
+    total,
+    page,
+    totalPages,
+  };
+}
 
 export async function listAvaiables(): Promise<ClassItem[]> {
   const { data } = await getWithFallback(['/class/avaiables', '/class/available']);

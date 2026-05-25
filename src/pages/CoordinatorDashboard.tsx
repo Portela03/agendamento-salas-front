@@ -17,7 +17,8 @@ import {
 import { Link } from 'react-router-dom';
 
 
-import { listClasses, type ClassItem } from '../services/classService';
+import { listClassesPaginated, type ClassItem } from '../services/classService';
+import { Pagination } from '../components/Pagination';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -26,15 +27,19 @@ import { type Reserva, type ReservaStatus, reservaService } from '../services/re
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function statusLabel(status: ReservaStatus) {
+function statusLabel(status: string) {
   if (status === 'APROVADA') return 'Aprovada';
   if (status === 'REJEITADA') return 'Rejeitada';
+  if (status === 'CANCELADA') return 'Cancelada';
+  if (status === 'PARCIAL') return 'Parcial';
   return 'Aguardando';
 }
 
-function statusVariant(status: ReservaStatus): 'approved' | 'rejected' | 'waiting' {
+function statusVariant(status: string): 'approved' | 'rejected' | 'waiting' | 'default' | 'partial' {
   if (status === 'APROVADA') return 'approved';
   if (status === 'REJEITADA') return 'rejected';
+  if (status === 'CANCELADA') return 'default';
+  if (status === 'PARCIAL') return 'partial';
   return 'waiting';
 }
 
@@ -176,8 +181,13 @@ export function CoordinatorDashboard() {
   const [rejeitarId, setRejeitarId] = useState<string | null>(null);
   const [expandedSeries, setExpandedSeries] = useState<Record<string, boolean>>({});
 
+  // Paginação de Reservas
+  const [reservasPage, setReservasPage] = useState(1);
+
   // Salas
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [classesPage, setClassesPage] = useState(1);
+  const [classesTotalPages, setClassesTotalPages] = useState(1);
   const [classesLoading, setClassesLoading] = useState(false);
   const [classesError, setClassesError] = useState('');
   const [onlyAvailableClasses, setOnlyAvailableClasses] = useState(false);
@@ -195,26 +205,29 @@ export function CoordinatorDashboard() {
     }
   }, []);
 
-  const loadClasses = useCallback(async () => {
+  const loadClasses = useCallback(async (page = classesPage) => {
     try {
       setClassesLoading(true);
       setClassesError('');
-      const data = await listClasses(onlyAvailableClasses);
-      setClasses(data);
+      const data = await listClassesPaginated(onlyAvailableClasses, page, 8);
+      setClasses(data.data);
+      setClassesTotalPages(data.totalPages);
+      setClassesPage(data.page);
     } catch {
       setClassesError('Não foi possível carregar as salas.');
     } finally {
       setClassesLoading(false);
     }
-  }, [onlyAvailableClasses]);
+  }, [onlyAvailableClasses, classesPage]);
 
   useEffect(() => {
     void loadReservas();
   }, [loadReservas]);
 
   useEffect(() => {
-    void loadClasses();
-  }, [loadClasses]);
+    setClassesPage(1);
+    void loadClasses(1);
+  }, [onlyAvailableClasses]);
 
   async function handleAprovarReserva(id: string) {
     try {
@@ -281,6 +294,17 @@ export function CoordinatorDashboard() {
     const createdB = new Date(b.principal.createdAt).getTime();
     return createdB - createdA;
   });
+
+  useEffect(() => {
+    setReservasPage(1);
+  }, [filtroStatus, filtroPeriodo]);
+
+  const LIMIT_RESERVAS = 5;
+  const totalReservasPages = Math.ceil(reservasAgrupadas.length / LIMIT_RESERVAS) || 1;
+  const reservasPaginadas = reservasAgrupadas.slice(
+    (reservasPage - 1) * LIMIT_RESERVAS,
+    reservasPage * LIMIT_RESERVAS
+  );
 
   const classesFiltradas = filtroTipoSala ? classes.filter((item) => item.type === filtroTipoSala) : classes;
 
@@ -354,6 +378,7 @@ export function CoordinatorDashboard() {
                 <option value="AGUARDANDO">Aguardando</option>
                 <option value="APROVADA">Aprovada</option>
                 <option value="REJEITADA">Rejeitada</option>
+                <option value="CANCELADA">Cancelada</option>
               </Select>
             </div>
 
@@ -409,13 +434,21 @@ export function CoordinatorDashboard() {
 
           {!reservasLoading && reservasAgrupadas.length > 0 && (
             <div className="grid gap-4">
-              {reservasAgrupadas.map((grupo) => {
+              {reservasPaginadas.map((grupo) => {
                 const reserva = grupo.principal;
                 const pendentes = grupo.reservas.filter((item) => item.status === 'AGUARDANDO');
                 const serieId = reserva.serieId ?? '';
                 const isExpanded = Boolean(expandedSeries[serieId]);
                 const primeiraData = formatDate(grupo.reservas[0].data);
                 const ultimaData = formatDate(grupo.reservas[grupo.reservas.length - 1].data);
+
+                const statusGeral = (() => {
+                  if (grupo.reservas.some((r) => r.status === 'AGUARDANDO')) return 'AGUARDANDO';
+                  if (grupo.reservas.every((r) => r.status === 'APROVADA')) return 'APROVADA';
+                  if (grupo.reservas.every((r) => r.status === 'REJEITADA')) return 'REJEITADA';
+                  if (grupo.reservas.every((r) => r.status === 'CANCELADA')) return 'CANCELADA';
+                  return 'PARCIAL';
+                })();
 
                 return (
                   <div
@@ -432,8 +465,8 @@ export function CoordinatorDashboard() {
                         <h2 className="text-lg font-bold text-brand-ink high-contrast:text-yellow-400">
                           Sala: {reserva.salaNome ?? reserva.salaId}
                         </h2>
-                        <Badge variant={statusVariant((pendentes.length > 0 ? 'AGUARDANDO' : reserva.status) as ReservaStatus)}>
-                          {statusLabel((pendentes.length > 0 ? 'AGUARDANDO' : reserva.status) as ReservaStatus)}
+                        <Badge variant={statusVariant(statusGeral)}>
+                          {statusLabel(statusGeral)}
                         </Badge>
                         {grupo.isSerie && (
                           <span className="inline-flex items-center rounded-full bg-brand-teal/10 px-2.5 py-0.5 text-xs font-semibold text-brand-teal">
@@ -547,6 +580,14 @@ export function CoordinatorDashboard() {
                 );
               })}
             </div>
+          )}
+
+          {!reservasLoading && reservasAgrupadas.length > 0 && (
+            <Pagination
+              currentPage={reservasPage}
+              totalPages={totalReservasPages}
+              onPageChange={setReservasPage}
+            />
           )}
         </CardContent>
       </Card>
@@ -665,6 +706,17 @@ export function CoordinatorDashboard() {
                 </article>
               ))}
             </div>
+          )}
+
+          {!classesLoading && classes.length > 0 && (
+            <Pagination
+              currentPage={classesPage}
+              totalPages={classesTotalPages}
+              onPageChange={(p) => {
+                setClassesPage(p);
+                void loadClasses(p);
+              }}
+            />
           )}
         </CardContent>
       </Card>
