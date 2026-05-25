@@ -14,8 +14,11 @@ import { useNavigate } from 'react-router-dom';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
 import { Reserva, reservaService } from '../services/reservaService';
 import { useAuth } from '../hooks/useAuth';
+import { Pagination } from '../components/Pagination';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -209,14 +212,14 @@ function GrupoCard({
     if (reservas.some((r) => r.status === 'AGUARDANDO')) return 'AGUARDANDO';
     if (reservas.every((r) => r.status === 'APROVADA')) return 'APROVADA';
     if (reservas.every((r) => r.status === 'REJEITADA')) return 'REJEITADA';
-    if (reservas.some((r) => r.status === 'APROVADA') && reservas.some((r) => r.status === 'REJEITADA')) {
-      return 'PARCIAL';
-    }
+    if (reservas.every((r) => r.status === 'CANCELADA')) return 'CANCELADA';
     return 'PARCIAL';
   })();
 
   const primeiraData = formatDate(reservas[0].data);
   const ultimaData = formatDate(reservas[reservas.length - 1].data);
+
+  const podeCancelar = !isSerie && onCancelar && principal.status !== 'CANCELADA' && principal.status !== 'REJEITADA';
 
   return (
     <div
@@ -264,43 +267,43 @@ function GrupoCard({
             </div>
           </div>
 
-          {isSerie && (
-            <button
-              type="button"
-              onClick={() => setExpanded((p) => !p)}
-              className="flex items-center gap-1.5 rounded-xl border border-brand-teal/20 px-3 py-1.5 text-xs font-semibold text-brand-teal transition hover:bg-brand-teal hover:text-white"
-            >
-              {expanded ? (
-                <>
-                  <ChevronDown className="h-3.5 w-3.5" />
-                  Ocultar datas
-                </>
-              ) : (
-                <>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                  Ver {reservas.length} datas
-                </>
-              )}
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {isSerie && (
+              <button
+                type="button"
+                onClick={() => setExpanded((p) => !p)}
+                className="flex items-center gap-1.5 rounded-xl border border-brand-teal/20 px-3 py-1.5 text-xs font-semibold text-brand-teal transition hover:bg-brand-teal hover:text-white"
+              >
+                {expanded ? (
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    Ocultar datas
+                  </>
+                ) : (
+                  <>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                    Ver {reservas.length} datas
+                  </>
+                )}
+              </button>
+            )}
+
+            {podeCancelar && (
+              <Button
+                variant="outline"
+                className="border-rose-200 text-rose-600 hover:bg-rose-50 whitespace-nowrap"
+                onClick={() => onCancelar(principal.id)}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                Cancelar Reserva
+              </Button>
+            )}
+          </div>
         </div>
 
         {!isSerie && principal.justificativa && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
             <span className="font-semibold">Motivo da rejeição:</span> {principal.justificativa}
-          </div>
-        )}
-
-        {!isSerie && onCancelar && principal.status !== 'CANCELADA' && principal.status !== 'REJEITADA' && (
-          <div className="mt-3">
-             <Button
-               variant="outline"
-               className="border-rose-200 text-rose-600 hover:bg-rose-50"
-               onClick={() => onCancelar(principal.id)}
-             >
-               <XCircle className="mr-2 h-4 w-4" />
-               Cancelar Reserva
-             </Button>
           </div>
         )}
       </div>
@@ -350,7 +353,33 @@ function ListaReservas({
   onRefresh: () => void;
   onCancelar?: (id: string) => void;
 }) {
-  const grupos = agruparReservas(reservas);
+  const [page, setPage] = useState(1);
+  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtroData, setFiltroData] = useState('');
+  const [filtroPeriodo, setFiltroPeriodo] = useState('');
+
+  const reservasFiltradas = reservas.filter((r) => {
+    if (filtroStatus && r.status !== filtroStatus) return false;
+    if (filtroPeriodo && r.periodo !== filtroPeriodo) return false;
+    if (filtroData) {
+      const rDate = new Date(r.data).toISOString().split('T')[0];
+      if (rDate !== filtroData) return false;
+    }
+    return true;
+  });
+
+  const grupos = agruparReservas(reservasFiltradas);
+
+  // Zera a página se mudar as reservas e a página atual ficar fora do limite
+  const limit = 10;
+  const totalPages = Math.ceil(grupos.length / limit) || 1;
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(1);
+    }
+  }, [totalPages, page, filtroStatus, filtroData, filtroPeriodo]);
+
+  const gruposPaginados = grupos.slice((page - 1) * limit, page * limit);
 
   return (
     <>
@@ -371,7 +400,66 @@ function ListaReservas({
         </Button>
       </CardHeader>
 
-      <CardContent className="p-6 md:p-8">
+      <CardContent className="p-6 md:p-8 space-y-4">
+        <div className="flex flex-wrap gap-3 rounded-2xl border border-brand-teal/10 bg-brand-mist/20 p-4">
+          <div className="min-w-[160px] flex-1">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Status
+            </label>
+            <Select
+              value={filtroStatus}
+              onChange={(e) => setFiltroStatus(e.target.value)}
+            >
+              <option value="">Todos</option>
+              <option value="AGUARDANDO">Aguardando</option>
+              <option value="APROVADA">Aprovada</option>
+              <option value="REJEITADA">Rejeitada</option>
+              <option value="CANCELADA">Cancelada</option>
+            </Select>
+          </div>
+
+          <div className="min-w-[160px] flex-1">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Data da Reserva
+            </label>
+            <Input
+              type="date"
+              value={filtroData}
+              onChange={(e) => setFiltroData(e.target.value)}
+            />
+          </div>
+
+          <div className="min-w-[160px] flex-1">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Horário
+            </label>
+            <Select
+              value={filtroPeriodo}
+              onChange={(e) => setFiltroPeriodo(e.target.value)}
+            >
+              <option value="">Todos</option>
+              <option value="matutino">Matutino</option>
+              <option value="vespertino">Vespertino</option>
+              <option value="noturno">Noturno</option>
+            </Select>
+          </div>
+
+          {(filtroStatus || filtroData || filtroPeriodo) && (
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setFiltroStatus('');
+                  setFiltroData('');
+                  setFiltroPeriodo('');
+                }}
+              >
+                Limpar filtros
+              </Button>
+            </div>
+          )}
+        </div>
+
         {isLoading && (
           <div className="flex items-center gap-3 rounded-2xl border border-brand-teal/15 bg-brand-teal/5 px-4 py-3 text-sm text-brand-teal">
             <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -398,17 +486,27 @@ function ListaReservas({
             </div>
             <h2 className="text-xl font-bold text-brand-ink">Nenhuma reserva encontrada</h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-              Assim que existirem reservas enviadas, elas aparecerão aqui com seus principais detalhes.
+              {(filtroStatus || filtroData || filtroPeriodo)
+                ? 'Nenhuma reserva corresponde aos filtros aplicados.'
+                : 'Assim que existirem reservas enviadas, elas aparecerão aqui com seus principais detalhes.'}
             </p>
           </div>
         )}
 
         {!isLoading && !error && grupos.length > 0 && (
-          <div className="grid gap-4">
-            {grupos.map((grupo) => (
-              <GrupoCard key={grupo.key} grupo={grupo} onCancelar={onCancelar} />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-4">
+              {gruposPaginados.map((grupo) => (
+                <GrupoCard key={grupo.key} grupo={grupo} onCancelar={onCancelar} />
+              ))}
+            </div>
+            
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
+          </>
         )}
       </CardContent>
     </>

@@ -18,12 +18,13 @@ import { Select } from '../components/ui/select';
 import {
   createClass,
   deleteClass,
-  listClasses,
+  listClassesPaginated,
   updateClass,
   type ClassItem,
   type ClassStatus,
   type ClassType,
 } from '../services/classService';
+import { Pagination } from '../components/Pagination';
 
 type Feedback = { type: 'success' | 'error'; text: string } | null;
 
@@ -60,6 +61,8 @@ export default function ClassManagementPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [loadingList, setLoadingList] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -90,11 +93,13 @@ export default function ClassManagementPage() {
 
   const hasErrors = Boolean(errors.name || errors.capacity);
 
-  async function loadData(showError = true) {
+  async function loadData(showError = true, currentPage = page) {    
     try {
       setLoadingList(true);
-      const data = await listClasses(onlyAvailable);
-      setClasses(data);
+      const data = await listClassesPaginated(onlyAvailable, currentPage, 8);
+      setClasses(data.data);
+      setTotalPages(data.totalPages);
+      setPage(data.page);
     } catch {
       if (showError) setFeedback({ type: 'error', text: 'Não foi possível carregar as salas.' });
     } finally {
@@ -103,7 +108,8 @@ export default function ClassManagementPage() {
   }
 
   useEffect(() => {
-    void loadData();
+    setPage(1);
+    void loadData(true, 1);
   }, [onlyAvailable]);
 
   function onChange<K extends keyof FormState>(field: K, value: FormState[K]) {
@@ -363,6 +369,17 @@ export default function ClassManagementPage() {
                   </article>
                 ))}
               </div>
+            )}
+
+            {!loadingList && classes.length > 0 && (
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={(p) => {
+                  setPage(p);
+                  void loadData(true, p);
+                }}
+              />
             )}
           </section>
         </div>
