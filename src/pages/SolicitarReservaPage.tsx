@@ -5,7 +5,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { listAvaiables, type ClassItem } from '../services/classService';
 import { fetchCalendario } from '../services/calendarService';
-import { reservaService, type Reserva } from '../services/reservaService';
+import { reservaService, type PeriodoInativoProfessor, type Reserva } from '../services/reservaService';
 import { buildHolidayMap, getFeriado, getSemestreAtivo, isForaDoPeriodoLetivo } from '../lib/holidays';
 
 // ── Calendário ────────────────────────────────────────────────────────────────
@@ -153,6 +153,18 @@ function isSameDate(a: Date, b: Date): boolean {
   );
 }
 
+function isWithinPeriodoInativoProfessor(date: Date, periodo: PeriodoInativoProfessor | null): boolean {
+  if (!periodo) return false;
+
+  const dia = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const inicio = new Date(periodo.dataInicio);
+  const fim = new Date(periodo.dataFim);
+  inicio.setHours(0, 0, 0, 0);
+  fim.setHours(0, 0, 0, 0);
+
+  return dia.getTime() >= inicio.getTime() && dia.getTime() <= fim.getTime();
+}
+
 function getReservaClassId(reserva: Reserva): string {
   return reserva.salaId || reserva.classId || '';
 }
@@ -203,6 +215,7 @@ function useReservaLogic() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [conflitosSemestre, setConflitosSemestre] = useState<string[]>([]);
+  const [periodoInativoProfessor, setPeriodoInativoProfessor] = useState<PeriodoInativoProfessor | null>(null);
 
   // Derivações
   const cursoAtual = useMemo(() => CURSOS.find(c => c.sigla === cursoSigla) ?? null, [cursoSigla]);
@@ -226,6 +239,15 @@ function useReservaLogic() {
     if (selectedDate.getDay() === 0) return { label: 'Domingo', tipo: 'academico' as const };
     return getFeriado(selectedDate, buildHolidayMap(selectedDate.getFullYear()));
   }, [dataSelecionada]);
+
+  const bloqueioCoordenacaoAviso = useMemo(() => {
+    if (!dataSelecionada || !periodoInativoProfessor) return null;
+    const selectedDate = parseIsoDate(dataSelecionada);
+    if (selectedDate.getDay() === 0) return null;
+    return isWithinPeriodoInativoProfessor(selectedDate, periodoInativoProfessor)
+      ? periodoInativoProfessor
+      : null;
+  }, [dataSelecionada, periodoInativoProfessor]);
 
   const loadReservasMes = useCallback(async () => {
     try {
@@ -254,6 +276,15 @@ function useReservaLogic() {
     void loadClasses();
   }, []);
 
+  useEffect(() => {
+    async function loadPeriodoInativo() {
+      const periodo = await reservaService.obterPeriodoInativoProfessor();
+      setPeriodoInativoProfessor(periodo);
+    }
+
+    void loadPeriodoInativo();
+  }, []);
+
   useEffect(() => { void loadReservasMes(); }, [loadReservasMes]);
 
   const diasDoMes = useMemo(() => getDiasDoMes(anoAtual, mesAtual), [anoAtual, mesAtual]);
@@ -271,7 +302,7 @@ function useReservaLogic() {
       const feriado = getFeriado(date, holidayMapMes);
       const dateZero = new Date(date); dateZero.setHours(0, 0, 0, 0);
 
-      if (date.getDay() === 0 || !!feriado || isForaDoPeriodoLetivo(date) || dateZero < hojeZerado) return [];
+      if (date.getDay() === 0 || !!feriado || isWithinPeriodoInativoProfessor(date, periodoInativoProfessor) || isForaDoPeriodoLetivo(date) || dateZero < hojeZerado) return [];
 
       const reservasNoDia = reservasMes.filter((reserva) => {
         const reservaDate = new Date(reserva.data);
@@ -294,7 +325,7 @@ function useReservaLogic() {
         });
       });
     },
-    [classesDisponiveis, fimMin, holidayMapMes, hojeZerado, inicioMin, intervaloValido, reservasMes]
+    [classesDisponiveis, fimMin, holidayMapMes, hojeZerado, inicioMin, intervaloValido, periodoInativoProfessor, reservasMes]
   );
 
   // Verifica se um turno está disponível no dia selecionado (ao menos 1 sala livre)
@@ -305,7 +336,7 @@ function useReservaLogic() {
       const feriado = getFeriado(date, holidayMapMes);
       const dateZero = new Date(date); dateZero.setHours(0, 0, 0, 0);
 
-      if (date.getDay() === 0 || !!feriado || isForaDoPeriodoLetivo(date) || dateZero < hojeZerado) return false;
+      if (date.getDay() === 0 || !!feriado || isWithinPeriodoInativoProfessor(date, periodoInativoProfessor) || isForaDoPeriodoLetivo(date) || dateZero < hojeZerado) return false;
 
       const slotInicio = toMinutes(slot.inicio);
       const slotFim = toMinutes(slot.fim);
@@ -328,7 +359,7 @@ function useReservaLogic() {
         });
       });
     },
-    [classesDisponiveis, holidayMapMes, hojeZerado, reservasMes]
+    [classesDisponiveis, holidayMapMes, hojeZerado, periodoInativoProfessor, reservasMes]
   );
 
   const salasNoDiaSelecionado = useMemo(() => {
@@ -377,6 +408,7 @@ function useReservaLogic() {
     if (!turnoSelecionado) { setError('Selecione um turno de horário.'); return; }
     if (!dataSelecionada) { setError('Selecione um dia no calendário.'); return; }
     if (feriadoAviso) { setError(`Não é possível agendar em feriado/recesso: ${feriadoAviso.label}.`); return; }
+    if (bloqueioCoordenacaoAviso) { setError('Não é possível agendar nesse período bloqueado pela coordenação.'); return; }
     if (!salaId) { setError('Selecione uma sala disponível para o dia escolhido.'); return; }
     if (!salasNoDiaSelecionado.some((sala) => sala.id === salaId)) {
       setError('A sala selecionada não está mais disponível no horário escolhido.'); return;
@@ -429,9 +461,11 @@ function useReservaLogic() {
     mesAtual, anoAtual, classesDisponiveis, reservasMes,
     cursoSigla, semestre, turnoSelecionado, salaId, dataSelecionada, modoReserva,
     isSubmitting, loadingClasses, loadingCalendar, error, success, conflitosSemestre,
+    periodoInativoProfessor,
     // derivados
     cursoAtual, slotSelecionado, horarioInicio, horarioFim, turmaString,
     inicioMin, fimMin, intervaloValido, holidayMapMes, feriadoAviso,
+    bloqueioCoordenacaoAviso,
     diasDoMes, primeiroDiaSemana, hojeZerado,
     salasNoDiaSelecionado, previaReservaSemestre,
     // setters
@@ -476,6 +510,7 @@ function SecaoTurmaHorario({
   turnoSelecionado, setTurnoSelecionado,
   cursoAtual,
   dataSelecionada, isTurnoDisponivel,
+  periodoInativoProfessor,
   loadingClasses,
 }: {
   prefix: string;
@@ -485,9 +520,13 @@ function SecaoTurmaHorario({
   cursoAtual: Curso | null;
   dataSelecionada: string;
   isTurnoDisponivel: (slot: SlotHorario, date: Date) => boolean;
+  periodoInativoProfessor: PeriodoInativoProfessor | null;
   loadingClasses: boolean;
 }) {
   const diaDate = dataSelecionada ? parseIsoDate(dataSelecionada) : null;
+  const bloqueioCoordenacao = diaDate && diaDate.getDay() !== 0
+    ? isWithinPeriodoInativoProfessor(diaDate, periodoInativoProfessor)
+    : false;
 
   return (
     <div className="space-y-5">
@@ -557,7 +596,9 @@ function SecaoTurmaHorario({
                     selecionado
                       ? `${cores.bg} ${cores.border} ring-2 ${cores.ring} shadow-sm scale-[1.03]`
                       : diaDate && !disponivel
-                      ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-50'
+                      ? bloqueioCoordenacao
+                        ? 'cursor-not-allowed border-slate-200 bg-slate-50/80 opacity-70'
+                        : 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-50'
                       : 'border-brand-teal/10 bg-white hover:shadow-md hover:scale-[1.02] hover:border-brand-teal/25'
                   }`}
                 >
@@ -586,12 +627,14 @@ function SecaoTurmaHorario({
                   {diaDate && (
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       !disponivel
-                        ? 'bg-rose-100 text-rose-600'
+                        ? bloqueioCoordenacao
+                          ? 'bg-slate-100 text-slate-500'
+                          : 'bg-rose-100 text-rose-600'
                         : selecionado
                         ? `${cores.bg} ${cores.icon}`
                         : 'bg-emerald-50 text-emerald-600'
                     }`}>
-                      {!disponivel ? 'Sem salas' : selecionado ? 'Selecionado' : 'Disponível'}
+                      {!disponivel ? (bloqueioCoordenacao ? 'Bloqueado' : 'Sem salas') : selecionado ? 'Selecionado' : 'Disponível'}
                     </span>
                   )}
                 </button>
@@ -608,12 +651,13 @@ function SecaoTurmaHorario({
 
 function CalendarioMes({
   mesAtual, anoAtual, diasDoMes, primeiroDiaSemana,
-  holidayMapMes, hojeZerado, loadingClasses, loadingCalendar,
+  holidayMapMes, hojeZerado, periodoInativoProfessor, loadingClasses, loadingCalendar,
   dataSelecionada, prevMes, nextMes, onSelectDia,
 }: {
   mesAtual: number; anoAtual: number;
   diasDoMes: Date[]; primeiroDiaSemana: number;
   holidayMapMes: Map<string, any>; hojeZerado: Date;
+  periodoInativoProfessor: PeriodoInativoProfessor | null;
   loadingClasses: boolean; loadingCalendar: boolean;
   dataSelecionada: string;
   prevMes: () => void; nextMes: () => void;
@@ -661,16 +705,19 @@ function CalendarioMes({
           const isDomingo = dia.getDay() === 0;
           const isPast = diaZero < hojeZerado;
           const foraPeriodo = isForaDoPeriodoLetivo(dia);
-          const bloqueado = isDomingo || !!feriado || foraPeriodo || isPast;
+          const bloqueioCoordenacao = !isDomingo && isWithinPeriodoInativoProfessor(dia, periodoInativoProfessor);
+          const bloqueado = isDomingo || !!feriado || foraPeriodo || isPast || bloqueioCoordenacao;
           const isSelected = dataSelecionada === iso;
 
           const blockStyle = isPast
-            ? { bg: 'bg-slate-100', border: 'border-slate-200', num: 'text-slate-300 line-through', icon: <Clock className="h-3 w-3" />, label: 'Passado', labelColor: 'text-slate-400' }
+            ? { bg: 'bg-slate-50', border: 'border-slate-200', num: 'text-slate-300 line-through', icon: <Clock className="h-3 w-3" />, label: 'Passado', labelColor: 'text-slate-400' }
             : isDomingo
             ? { bg: 'bg-slate-50', border: 'border-slate-200', num: 'text-slate-400', icon: <Sunset className="h-3 w-3" />, label: 'Domingo', labelColor: 'text-slate-400' }
             : feriado
-            ? { bg: 'bg-amber-50', border: 'border-amber-200', num: 'text-amber-600', icon: <Star className="h-3 w-3" />, label: feriado.label, labelColor: 'text-amber-500' }
-            : { bg: 'bg-blue-50', border: 'border-blue-200', num: 'text-blue-400', icon: <CalendarOff className="h-3 w-3" />, label: 'Fora do período', labelColor: 'text-blue-400' };
+            ? { bg: 'bg-amber-50/80', border: 'border-amber-100', num: 'text-amber-700', icon: <Star className="h-3 w-3" />, label: feriado.label, labelColor: 'text-amber-600' }
+            : bloqueioCoordenacao
+            ? { bg: 'bg-slate-100', border: 'border-slate-200', num: 'text-slate-500', icon: <CalendarOff className="h-3 w-3" />, label: 'Bloqueado pela coordenação', labelColor: 'text-slate-500' }
+            : { bg: 'bg-sky-50', border: 'border-sky-100', num: 'text-sky-500', icon: <CalendarOff className="h-3 w-3" />, label: 'Fora do período', labelColor: 'text-sky-500' };
 
           return (
             <button
@@ -803,7 +850,7 @@ export function SolicitarReservaPage() {
     mesAtual, anoAtual, diasDoMes, primeiroDiaSemana,
     cursoSigla, semestre, turnoSelecionado, salaId, dataSelecionada, modoReserva,
     isSubmitting, loadingClasses, loadingCalendar, error, success, conflitosSemestre,
-    cursoAtual, slotSelecionado, intervaloValido, holidayMapMes, feriadoAviso,
+    cursoAtual, slotSelecionado, intervaloValido, holidayMapMes, feriadoAviso, bloqueioCoordenacaoAviso, periodoInativoProfessor,
     hojeZerado, salasNoDiaSelecionado, previaReservaSemestre, classesDisponiveis,
     setCursoSigla, setSemestre, setTurnoSelecionado, setSalaId, setModoReserva,
     prevMes, nextMes, onSelectDia, handleSubmit, isTurnoDisponivel,
@@ -835,6 +882,7 @@ export function SolicitarReservaPage() {
               cursoAtual={cursoAtual}
               dataSelecionada={dataSelecionada}
               isTurnoDisponivel={isTurnoDisponivel}
+              periodoInativoProfessor={periodoInativoProfessor}
               loadingClasses={loadingClasses}
             />
 
@@ -889,6 +937,7 @@ export function SolicitarReservaPage() {
               mesAtual={mesAtual} anoAtual={anoAtual}
               diasDoMes={diasDoMes} primeiroDiaSemana={primeiroDiaSemana}
               holidayMapMes={holidayMapMes} hojeZerado={hojeZerado}
+              periodoInativoProfessor={periodoInativoProfessor}
               loadingClasses={loadingClasses} loadingCalendar={loadingCalendar}
               dataSelecionada={dataSelecionada}
               prevMes={prevMes} nextMes={nextMes} onSelectDia={onSelectDia}
@@ -919,6 +968,18 @@ export function SolicitarReservaPage() {
               </div>
             )}
 
+            {bloqueioCoordenacaoAviso && feriadoAviso?.label !== 'Domingo' && (
+              <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                <CalendarOff className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" />
+                <div>
+                  <p className="font-semibold">Bloqueado pela coordenação</p>
+                  <p>
+                    Esse período foi bloqueado para novas reservas.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             {modoReserva === 'semestre' && conflitosSemestre.length > 0 && (
@@ -938,7 +999,7 @@ export function SolicitarReservaPage() {
               className="group"
               disabled={
                 isSubmitting || loadingClasses || loadingCalendar ||
-                classesDisponiveis.length === 0 || !!feriadoAviso ||
+                classesDisponiveis.length === 0 || !!feriadoAviso || !!bloqueioCoordenacaoAviso ||
                 !turmaString || !turnoSelecionado || !intervaloValido ||
                 !dataSelecionada || !salaId
               }
@@ -963,7 +1024,7 @@ export function SolicitarReservaInline() {
     mesAtual, anoAtual, diasDoMes, primeiroDiaSemana,
     cursoSigla, semestre, turnoSelecionado, salaId, dataSelecionada, modoReserva,
     isSubmitting, loadingClasses, loadingCalendar, error, success, conflitosSemestre,
-    cursoAtual, slotSelecionado, intervaloValido, holidayMapMes, feriadoAviso,
+    cursoAtual, slotSelecionado, intervaloValido, holidayMapMes, feriadoAviso, bloqueioCoordenacaoAviso, periodoInativoProfessor,
     hojeZerado, salasNoDiaSelecionado, previaReservaSemestre, classesDisponiveis,
     setCursoSigla, setSemestre, setTurnoSelecionado, setSalaId, setModoReserva,
     prevMes, nextMes, onSelectDia, handleSubmit, isTurnoDisponivel,
@@ -983,6 +1044,7 @@ export function SolicitarReservaInline() {
           cursoAtual={cursoAtual}
           dataSelecionada={dataSelecionada}
           isTurnoDisponivel={isTurnoDisponivel}
+          periodoInativoProfessor={periodoInativoProfessor}
           loadingClasses={loadingClasses}
         />
 
@@ -1037,6 +1099,7 @@ export function SolicitarReservaInline() {
           mesAtual={mesAtual} anoAtual={anoAtual}
           diasDoMes={diasDoMes} primeiroDiaSemana={primeiroDiaSemana}
           holidayMapMes={holidayMapMes} hojeZerado={hojeZerado}
+          periodoInativoProfessor={periodoInativoProfessor}
           loadingClasses={loadingClasses} loadingCalendar={loadingCalendar}
           dataSelecionada={dataSelecionada}
           prevMes={prevMes} nextMes={nextMes} onSelectDia={onSelectDia}
@@ -1067,6 +1130,16 @@ export function SolicitarReservaInline() {
           </div>
         )}
 
+        {bloqueioCoordenacaoAviso && feriadoAviso?.label !== 'Domingo' && (
+          <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <CalendarOff className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" />
+            <div>
+              <p className="font-semibold">Bloqueado pela coordenação</p>
+              <p>Esse período foi bloqueado para novas reservas.</p>
+            </div>
+          </div>
+        )}
+
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {modoReserva === 'semestre' && conflitosSemestre.length > 0 && (
@@ -1086,7 +1159,7 @@ export function SolicitarReservaInline() {
           className="group"
           disabled={
             isSubmitting || loadingClasses || loadingCalendar ||
-            classesDisponiveis.length === 0 || !!feriadoAviso ||
+            classesDisponiveis.length === 0 || !!feriadoAviso || !!bloqueioCoordenacaoAviso ||
             !turmaString || !turnoSelecionado || !intervaloValido ||
             !dataSelecionada || !salaId
           }
