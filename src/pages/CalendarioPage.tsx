@@ -12,7 +12,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { fetchCalendario } from '../services/calendarService';
 import { listClasses, ClassItem } from '../services/classService';
-import { Reserva } from '../services/reservaService';
+import { PeriodoInativoProfessor, Reserva, reservaService } from '../services/reservaService';
 import { buildHolidayMap, getFeriado, Feriado, getSemestreAtivo, isForaDoPeriodoLetivo, Semestre } from '../lib/holidays';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -39,6 +39,18 @@ function sameDay(a: Date, b: Date) {
   return isoDate(a) === isoDate(b);
 }
 
+function isWithinPeriodoInativoProfessor(date: Date, periodo: PeriodoInativoProfessor | null) {
+  if (!periodo) return false;
+
+  const alvo = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const inicio = new Date(periodo.dataInicio);
+  const fim = new Date(periodo.dataFim);
+  inicio.setHours(0, 0, 0, 0);
+  fim.setHours(0, 0, 0, 0);
+
+  return alvo >= inicio.getTime() && alvo <= fim.getTime();
+}
+
 function getDiasDoMes(ano: number, mes: number): Date[] {
   // mes 0-indexed
   const total = new Date(ano, mes + 1, 0).getDate();
@@ -58,6 +70,7 @@ interface DayInfo {
   date: Date;
   reservas: Reserva[];
   feriado: Feriado | null;
+  isBloqueadoCoordenacao: boolean;
   isToday: boolean;
   isPast: boolean;
   isCurrentMonth: boolean;
@@ -125,9 +138,19 @@ function DayPanel({
           </div>
         )}
 
+        {info.isBloqueadoCoordenacao && !info.feriado && (
+          <div className="mx-6 mt-4 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-medium text-slate-700 high-contrast:border-gray-500 high-contrast:bg-gray-800 high-contrast:text-gray-200">
+            <span className="mr-2">⛔</span>
+            Bloqueado pela coordenação
+            <p className="mt-1 text-xs font-normal opacity-75">
+              Novas reservas não podem ser feitas neste período.
+            </p>
+          </div>
+        )}
+
         {/* Reservas */}
         <div className="flex-1 space-y-3 p-6">
-          {info.reservas.length === 0 && !info.feriado && (
+          {info.reservas.length === 0 && !info.feriado && !info.isBloqueadoCoordenacao && (
             <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-brand-teal/20 bg-brand-mist/10 py-12 text-center high-contrast:border-yellow-400 high-contrast:bg-gray-800">
               <CalendarDays className="mb-3 h-8 w-8 text-brand-teal/40 high-contrast:text-yellow-400/40" />
               <p className="text-sm text-muted-foreground high-contrast:text-gray-300">Nenhuma reserva aprovada neste dia.</p>
@@ -170,8 +193,9 @@ function DayCell({
 }) {
   const hasFeriado = !!info.feriado;
   const hasReservas = info.reservas.length > 0;
+  const hasBloqueioCoordenacao = info.isBloqueadoCoordenacao && !hasFeriado;
 
-  const isBookable = !info.isForaPeriodo && !info.isDomingo && !info.isPast && !hasFeriado;
+  const isBookable = !info.isForaPeriodo && !info.isDomingo && !info.isPast && !hasFeriado && !hasBloqueioCoordenacao;
 
   let bg = 'bg-white hover:bg-brand-mist/20';
   if (info.isForaPeriodo || info.isDomingo) bg = 'bg-slate-50/70 hover:bg-slate-100/60';
@@ -179,6 +203,7 @@ function DayCell({
   if (info.isPast && !info.isForaPeriodo && !info.isDomingo) bg = 'bg-gray-50/80 hover:bg-gray-100/60';
   if (hasFeriado && info.feriado?.tipo === 'nacional') bg = 'bg-rose-50/80 hover:bg-rose-50';
   if (hasFeriado && info.feriado?.tipo === 'academico') bg = 'bg-amber-50/80 hover:bg-amber-50';
+  if (hasBloqueioCoordenacao) bg = 'bg-slate-100 hover:bg-slate-100';
 
   // Alto contraste
   let highContrastBg = '';
@@ -186,6 +211,7 @@ function DayCell({
   if (info.isToday) highContrastBg = 'high-contrast:bg-yellow-400/20 high-contrast:ring-2 high-contrast:ring-yellow-400/50';
   if (hasFeriado && info.feriado?.tipo === 'nacional') highContrastBg = 'high-contrast:bg-red-950 high-contrast:hover:bg-red-900';
   if (hasFeriado && info.feriado?.tipo === 'academico') highContrastBg = 'high-contrast:bg-yellow-950 high-contrast:hover:bg-yellow-900';
+  if (hasBloqueioCoordenacao) highContrastBg = 'high-contrast:bg-gray-600 high-contrast:hover:bg-gray-600';
 
   return (
     <button
@@ -204,6 +230,8 @@ function DayCell({
           ${
             info.isToday
               ? 'bg-brand-teal text-white high-contrast:bg-yellow-400 high-contrast:text-black'
+              : hasBloqueioCoordenacao
+              ? 'bg-slate-200 text-slate-700 high-contrast:bg-gray-200 high-contrast:text-black'
               : info.isDomingo || info.isForaPeriodo
               ? 'text-muted-foreground/40 high-contrast:text-gray-400'
               : info.isPast
@@ -225,6 +253,12 @@ function DayCell({
       {info.isForaPeriodo && !hasFeriado && (
         <span className="mt-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 high-contrast:bg-gray-600 high-contrast:text-gray-300">
           Fora do período
+        </span>
+      )}
+
+      {hasBloqueioCoordenacao && (
+        <span className="mt-1 rounded-md bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-slate-700 high-contrast:bg-gray-200 high-contrast:text-black">
+          Bloqueado pela coordenação
         </span>
       )}
 
@@ -274,6 +308,7 @@ export function CalendarioPage() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [periodoInativoProfessor, setPeriodoInativoProfessor] = useState<PeriodoInativoProfessor | null>(null);
 
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [filtroSala, setFiltroSala] = useState('');
@@ -297,6 +332,15 @@ export function CalendarioPage() {
 
   useEffect(() => {
     listClasses().then(setClasses).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const loadPeriodo = async () => {
+      const periodo = await reservaService.obterPeriodoInativoProfessor();
+      setPeriodoInativoProfessor(periodo);
+    };
+
+    void loadPeriodo();
   }, []);
 
   // ── Carregar reservas ─────────────────────────────────────────────────────
@@ -359,6 +403,7 @@ export function CalendarioPage() {
         date,
         reservas: dayReservas,
         feriado: getFeriado(date, holidayMap),
+        isBloqueadoCoordenacao: isWithinPeriodoInativoProfessor(date, periodoInativoProfessor),
         isToday: sameDay(date, hoje),
         isPast: date < hoje && !sameDay(date, hoje),
         isCurrentMonth: true,
@@ -371,13 +416,15 @@ export function CalendarioPage() {
     while (cells.length % 7 !== 0) cells.push(null);
 
     return cells;
-  }, [ano, mes, reservas, holidayMap]);
+  }, [ano, mes, reservas, holidayMap, periodoInativoProfessor]);
 
   // ── Resumo rápido ─────────────────────────────────────────────────────────
 
-  const totalFeriados = useMemo(() => {
-    return getDiasDoMes(ano, mes).filter((d) => getFeriado(d, holidayMap)).length;
-  }, [ano, mes, holidayMap]);
+  const totalBloqueados = useMemo(() => {
+    return getDiasDoMes(ano, mes).filter((d) => {
+      return !!getFeriado(d, holidayMap) || isWithinPeriodoInativoProfessor(d, periodoInativoProfessor);
+    }).length;
+  }, [ano, mes, holidayMap, periodoInativoProfessor]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -483,7 +530,7 @@ export function CalendarioPage() {
               <p className="mt-0.5 text-xs text-muted-foreground high-contrast:text-gray-300">
                 {reservas.length} reserva{reservas.length !== 1 ? 's' : ''} aprovada{reservas.length !== 1 ? 's' : ''}
                 {' · '}
-                {totalFeriados} dia{totalFeriados !== 1 ? 's' : ''} bloqueado{totalFeriados !== 1 ? 's' : ''}
+                {totalBloqueados} dia{totalBloqueados !== 1 ? 's' : ''} bloqueado{totalBloqueados !== 1 ? 's' : ''}
               </p>
             </div>
 
@@ -511,6 +558,11 @@ export function CalendarioPage() {
             <span className="flex items-center gap-1.5">
               <span className="h-3 w-3 rounded-sm bg-amber-100 ring-1 ring-amber-200 high-contrast:bg-yellow-950 high-contrast:ring-yellow-400" />
               <span className="high-contrast:text-yellow-400">Recesso acadêmico</span>
+            </span>
+
+            <span className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-sm bg-slate-200 ring-1 ring-slate-300 high-contrast:bg-gray-500 high-contrast:ring-gray-300" />
+              <span className="high-contrast:text-gray-200">Bloqueado pela coordenação</span>
             </span>
 
             <span className="flex items-center gap-1.5">
@@ -560,8 +612,7 @@ export function CalendarioPage() {
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-teal high-contrast:text-yellow-400" />
           <p>
             Apenas reservas com status <strong className="text-brand-ink high-contrast:text-yellow-400">Aprovada</strong> aparecem no calendário.
-            Dias marcados como feriado nacional ou recesso acadêmico são bloqueados automaticamente — não é possível
-            agendar salas nessas datas.
+            Dias marcados como feriado nacional, recesso acadêmico ou bloqueio definido pela coordenação aparecem destacados e não permitem novas reservas.
           </p>
         </div>
     </div>
@@ -578,6 +629,7 @@ export function CalendarioInline() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [periodoInativoProfessor, setPeriodoInativoProfessor] = useState<PeriodoInativoProfessor | null>(null);
 
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [filtroSala, setFiltroSala] = useState('');
@@ -593,6 +645,15 @@ export function CalendarioInline() {
 
   useEffect(() => {
     listClasses().then(setClasses).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const loadPeriodo = async () => {
+      const periodo = await reservaService.obterPeriodoInativoProfessor();
+      setPeriodoInativoProfessor(periodo);
+    };
+
+    void loadPeriodo();
   }, []);
 
   const load = useCallback(async () => {
@@ -635,16 +696,17 @@ export function CalendarioInline() {
         date, reservas: dayReservas, feriado: getFeriado(date, holidayMap),
         isToday: sameDay(date, hoje), isPast: date < hoje && !sameDay(date, hoje),
         isCurrentMonth: true, isForaPeriodo: isForaDoPeriodoLetivo(date),
+        isBloqueadoCoordenacao: isWithinPeriodoInativoProfessor(date, periodoInativoProfessor),
         isDomingo: date.getDay() === 0,
       });
     }
     while (cells.length % 7 !== 0) cells.push(null);
     return cells;
-  }, [ano, mes, reservas, holidayMap]);
+  }, [ano, mes, reservas, holidayMap, periodoInativoProfessor]);
 
-  const totalFeriados = useMemo(() =>
-    getDiasDoMes(ano, mes).filter((d) => getFeriado(d, holidayMap)).length,
-  [ano, mes, holidayMap]);
+  const totalBloqueados = useMemo(() =>
+    getDiasDoMes(ano, mes).filter((d) => !!getFeriado(d, holidayMap) || isWithinPeriodoInativoProfessor(d, periodoInativoProfessor)).length,
+  [ano, mes, holidayMap, periodoInativoProfessor]);
 
   return (
     <Card className="border-brand-teal/10 bg-white/85 rounded-tl-none">
@@ -715,7 +777,7 @@ export function CalendarioInline() {
               <h2 className="font-serif text-2xl font-bold text-brand-ink">{MESES[mes]} {ano}</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {reservas.length} reserva{reservas.length !== 1 ? 's' : ''} aprovada{reservas.length !== 1 ? 's' : ''}
-                {' · '}{totalFeriados} dia{totalFeriados !== 1 ? 's' : ''} bloqueado{totalFeriados !== 1 ? 's' : ''}
+                {' · '}{totalBloqueados} dia{totalBloqueados !== 1 ? 's' : ''} bloqueado{totalBloqueados !== 1 ? 's' : ''}
               </p>
             </div>
             <button onClick={nextMes} className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-teal/15 text-brand-teal transition hover:bg-brand-teal hover:text-white">
@@ -727,6 +789,7 @@ export function CalendarioInline() {
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-brand-teal/15 ring-1 ring-brand-teal/30" />Reserva aprovada</span>
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-rose-100 ring-1 ring-rose-200" />Feriado nacional</span>
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-amber-100 ring-1 ring-amber-200" />Recesso acadêmico</span>
+            <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-slate-200 ring-1 ring-slate-300" />Bloqueado pela coordenação</span>
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full bg-brand-teal" />Hoje</span>
           </div>
 
@@ -753,7 +816,7 @@ export function CalendarioInline() {
 
         <div className="mt-4 flex items-start gap-3 rounded-2xl border border-brand-teal/10 bg-white/80 px-5 py-4 text-sm text-muted-foreground">
           <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-teal" />
-          <p>Apenas reservas com status <strong className="text-brand-ink">Aprovada</strong> aparecem no calendário. Feriados e recessos são bloqueados automaticamente.</p>
+          <p>Apenas reservas com status <strong className="text-brand-ink">Aprovada</strong> aparecem no calendário. Feriados, recessos e bloqueios definidos pela coordenação são destacados e impedem novas reservas.</p>
         </div>
       </CardContent>
     </Card>
