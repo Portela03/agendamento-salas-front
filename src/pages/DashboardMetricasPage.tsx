@@ -246,7 +246,11 @@ export function DashboardMetricasPage() {
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={dados.reservasPorProfessor} margin={{ top: 5, right: 20, left: 0, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="professor" tick={{ fontSize: 11, angle: -30, textAnchor: 'end' }} interval={0} />
+                <XAxis dataKey="professor" tick={({ x, y, payload }: { x: number; y: number; payload: { value: string } }) => (
+                    <text x={x} y={y} dy={8} textAnchor="end" fontSize={11} transform={`rotate(-30, ${x}, ${y})`}>
+                      {payload.value}
+                    </text>
+                  )} interval={0} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Bar dataKey="total" name="Reservas" fill="#0d9488" radius={[4, 4, 0, 0]} />
