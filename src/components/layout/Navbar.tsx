@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell, CheckCircle, LogOut, Menu, Trash2, Undo2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import ContrastToggle from '../ContrastToggle';
 import { Notificacao } from '../../services/notificacaoService';
 
 interface NavbarProps {
@@ -139,7 +138,6 @@ export function Navbar({
 
       {/* Right controls */}
       <div className="ml-auto flex items-center gap-2">
-        <ContrastToggle />
 
         {/* ── Sino de notificações ── */}
         {user && (
