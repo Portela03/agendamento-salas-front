@@ -42,17 +42,22 @@ function getInitials(name: string) {
     .join('');
 }
 
-export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllAsRead, onMarkOneAsRead, onDeleteOne }: NavbarProps) {
+export function Navbar({
+  onToggleSidebar,
+  unreadCount,
+  notifications,
+  onMarkAllAsRead,
+  onMarkOneAsRead,
+  onDeleteOne,
+}: NavbarProps) {
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  // Map of notif id → countdown seconds remaining (null = not pending delete)
   const [pendingDelete, setPendingDelete] = useState<Record<string, number>>({});
   const countdownRefs = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  // Clean up intervals on unmount
   useEffect(() => {
     const refs = countdownRefs.current;
     return () => { Object.values(refs).forEach(clearInterval); };
@@ -68,7 +73,6 @@ export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllA
         if (remaining <= 0) {
           clearInterval(interval);
           delete countdownRefs.current[id];
-          // Fire actual delete after countdown
           onDeleteOne(id);
           const { [id]: _, ...rest } = prev;
           return rest;
@@ -91,13 +95,16 @@ export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllA
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setDropdownOpen(false);
       }
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+      if (notifRef.current && !notifRef.current.contains(target)) {
         setNotifOpen(false);
       }
     }
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -106,7 +113,6 @@ export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllA
     setNotifOpen((prev) => !prev);
   }
 
-  // Unread first, then sorted by date descending
   const sorted = [...notifications].sort((a, b) => {
     if (a.read !== b.read) return a.read ? 1 : -1;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -198,7 +204,6 @@ export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllA
                           }`}
                         >
                           {isPending ? (
-                            /* ── Estado "pendente de exclusão" ── */
                             <div className="flex flex-1 items-center gap-3">
                               <Trash2 className="h-4 w-4 flex-shrink-0 text-rose-400" />
                               <p className="flex-1 text-xs text-rose-600">
@@ -211,13 +216,11 @@ export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllA
                                   Desfazer
                                 </button>
                               </p>
-                              {/* Barra de progresso */}
                               <span className="ml-1 flex-shrink-0 rounded-full bg-rose-200 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
                                 {countdown}s
                               </span>
                             </div>
                           ) : (
-                            /* ── Estado normal ── */
                             <>
                               <span className="mt-0.5 flex-shrink-0 text-base leading-none">
                                 {cfg.icon}
@@ -264,42 +267,42 @@ export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllA
             )}
           </div>
         )}
-      </div>
 
-      {/* User dropdown */}
-      {user && (
-        <div className="relative ml-2" ref={dropdownRef}>
-          <button
-            aria-label={user.name}
-            className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-white/10"
-            onClick={() => setDropdownOpen((prev) => !prev)}
-          >
-            <span className="hidden text-sm text-white/70 sm:block">{user.name}</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-bold text-white ring-2 ring-white/20">
-              {getInitials(user.name)}
-            </div>
-          </button>
-
-          {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-2xl border border-white/10 bg-brand-teal shadow-xl">
-              <div className="border-b border-white/10 px-4 py-3">
-                <p className="truncate font-semibold text-white">{user.name}</p>
-                <p className="truncate text-xs text-white/50">{user.email}</p>
-                <p className="mt-0.5 text-xs text-white/40">
-                  {user.role === 'COORDENADOR' ? 'Coordenador' : 'Professor'}
-                </p>
+        {/* User dropdown */}
+        {user && (
+          <div className="relative ml-2" ref={dropdownRef}>
+            <button
+              aria-label={user.name}
+              className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-white/10"
+              onClick={() => setDropdownOpen((prev) => !prev)}
+            >
+              <span className="hidden text-sm text-white/70 sm:block">{user.name}</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-bold text-white ring-2 ring-white/20">
+                {getInitials(user.name)}
               </div>
-              <button
-                className="flex w-full items-center gap-3 px-4 py-3 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-                onClick={() => { setDropdownOpen(false); signOut(); }}
-              >
-                <LogOut className="h-4 w-4" />
-                Sair
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-2xl border border-white/10 bg-brand-teal shadow-xl">
+                <div className="border-b border-white/10 px-4 py-3">
+                  <p className="truncate font-semibold text-white">{user.name}</p>
+                  <p className="truncate text-xs text-white/50">{user.email}</p>
+                  <p className="mt-0.5 text-xs text-white/40">
+                    {user.role === 'COORDENADOR' ? 'Coordenador' : 'Professor'}
+                  </p>
+                </div>
+                <button
+                  className="flex w-full items-center gap-3 px-4 py-3 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                  onClick={() => { setDropdownOpen(false); signOut(); }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sair
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </header>
   );
 }
