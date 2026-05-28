@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, LogOut, Menu, Trash2, Undo2 } from 'lucide-react';
+import { Bell, CheckCircle, LogOut, Menu, Trash2, Undo2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import ContrastToggle from '../ContrastToggle';
 import { Notificacao } from '../../services/notificacaoService';
@@ -9,6 +9,7 @@ interface NavbarProps {
   unreadCount: number;
   notifications: Notificacao[];
   onMarkAllAsRead: () => void;
+  onMarkOneAsRead: (id: string) => void;
   onDeleteOne: (id: string) => void;
 }
 
@@ -41,7 +42,7 @@ function getInitials(name: string) {
     .join('');
 }
 
-export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllAsRead, onDeleteOne }: NavbarProps) {
+export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllAsRead, onMarkOneAsRead, onDeleteOne }: NavbarProps) {
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -102,11 +103,7 @@ export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllA
   }, []);
 
   function handleOpenNotif() {
-    const willOpen = !notifOpen;
-    setNotifOpen(willOpen);
-    if (willOpen && unreadCount > 0) {
-      onMarkAllAsRead();
-    }
+    setNotifOpen((prev) => !prev);
   }
 
   // Unread first, then sorted by date descending
@@ -237,6 +234,16 @@ export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllA
                               <div className="ml-1 flex flex-shrink-0 flex-col items-center gap-1.5">
                                 {!n.read && (
                                   <span className="h-2 w-2 rounded-full bg-rose-500" />
+                                )}
+                                {!n.read && (
+                                  <button
+                                    onClick={() => onMarkOneAsRead(n.id)}
+                                    aria-label="Marcar como lida"
+                                    title="Marcar como lida"
+                                    className="flex h-6 w-6 items-center justify-center rounded-full text-gray-300 transition-colors hover:bg-emerald-100 hover:text-emerald-600"
+                                  >
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                  </button>
                                 )}
                                 <button
                                   onClick={() => startDelete(n.id)}

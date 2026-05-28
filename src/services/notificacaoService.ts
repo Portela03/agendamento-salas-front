@@ -24,6 +24,10 @@ export const notificacaoService = {
     await api.patch('/notificacoes/read-all');
   },
 
+  marcarUmaComoLida: async (id: string): Promise<void> => {
+    await api.patch(`/notificacoes/${id}/read`);
+  },
+
   deletar: async (id: string): Promise<void> => {
     await api.delete(`/notificacoes/${id}`);
   },
