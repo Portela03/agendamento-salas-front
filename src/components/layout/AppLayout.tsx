@@ -114,8 +114,11 @@ function toToasts(notifications: Notificacao[]): AppToast[] {
 
 // ── Gerenciador de notificações (ambos os roles) ──────────────────────────────
 
-function NotificationManager() {
-  const { unreadNotifications, markAllAsRead } = useNotifications();
+interface NotificationManagerProps {
+  unreadNotifications: Notificacao[];
+}
+
+function NotificationManager({ unreadNotifications }: NotificationManagerProps) {
   const [toasts, setToasts] = useState<AppToast[]>([]);
   const processedRef = useRef<Set<string>>(new Set());
 
@@ -129,8 +132,8 @@ function NotificationManager() {
     if (newToasts.length > 0) {
       setToasts((prev) => [...prev, ...newToasts]);
     }
-    void markAllAsRead();
-  }, [unreadNotifications, markAllAsRead]);
+    // Não marca como lidas aqui — o badge só é zerado quando o usuário abre o painel
+  }, [unreadNotifications]);
 
   const dismiss = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
@@ -150,14 +153,22 @@ function NotificationManager() {
 export function AppLayout() {
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
+  const { notifications, unreadNotifications, unreadCount, markAllAsRead, markOneAsRead, deleteOne } = useNotifications();
 
   return (
     <div className="min-h-screen bg-background high-contrast:bg-gray-900">
-      <Navbar onToggleSidebar={() => setSidebarOpen((prev) => !prev)} />
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Navbar
+        onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+        unreadCount={unreadCount}
+        notifications={notifications}
+        onMarkAllAsRead={markAllAsRead}
+        onMarkOneAsRead={markOneAsRead}
+        onDeleteOne={deleteOne}
+      />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} notifications={notifications} />
 
       {/* Notificações em tempo real para todos os roles */}
-      {user && <NotificationManager />}
+      {user && <NotificationManager unreadNotifications={unreadNotifications} />}
 
       <main
         className={`pt-16 transition-all duration-300 ease-in-out ${

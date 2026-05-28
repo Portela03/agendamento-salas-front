@@ -13,6 +13,8 @@ import { useKeepAlive } from './hooks/useKeepAlive';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { FontSizeControls } from './components/accessibility/FontSizeControls';
+import { RelatorioReservasPage } from './pages/RelatorioReservasPage';
+import { DashboardMetricasPage } from './pages/DashboardMetricasPage';
 
 export function App() {
   // Pings /api/health every 10 min so the Render free-tier backend never sleeps.
@@ -37,6 +39,10 @@ export function App() {
           <Route path="/coordenador/calendario" element={<CalendarioPage />} />
           <Route path="/coordenador/periodos" element={<ControlePeriodosPage />} />
           <Route path="/coordenador/historico" element={<HistoricoReservasPage />} />
+          <Route path="/coordenador/relatorios" element={<RelatorioReservasPage />} />
+          <Route path="/coordenador/metricas" element={<DashboardMetricasPage />} />
+          <Route path="/coordenador/relatorios" element={<RelatorioReservasPage />} />
+          <Route path="/coordenador/metricas" element={<DashboardMetricasPage />} />
         </Route>
       </Route>
 
