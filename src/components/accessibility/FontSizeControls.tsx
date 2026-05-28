@@ -32,10 +32,10 @@ export function FontSizeControls() {
 
   const label = useMemo(() => `${Math.round(scale * 100)}%`, [scale]);
 
-  return (
+   return (
     <div
       aria-label="Controles de tamanho da fonte"
-      className="fixed bottom-4 right-4 z-[60] flex items-center gap-1 rounded-2xl border border-brand-teal/15 bg-white/95 p-1.5 shadow-soft backdrop-blur"
+      className="flex w-full items-center justify-between gap-1.5 rounded-xl border border-brand-teal/15 bg-white/95 p-1.5 shadow-soft"
       role="group"
     >
       <button
@@ -43,16 +43,16 @@ export function FontSizeControls() {
         aria-label="Diminuir tamanho da fonte"
         disabled={scaleIndex === 0}
         onClick={() => setScaleIndex((current) => Math.max(0, current - 1))}
-        className="flex h-9 w-9 items-center justify-center rounded-xl text-brand-teal transition hover:bg-brand-mist/50 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand-teal/10 bg-white text-brand-teal transition hover:bg-brand-mist/50 focus:outline-none focus:ring-2 focus:ring-brand-teal/30 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Minus className="h-4 w-4" />
       </button>
 
       <button
         type="button"
-        aria-label="Restaurar tamanho padrao da fonte"
+        aria-label="Restaurar tamanho padrão da fonte"
         onClick={() => setScaleIndex(DEFAULT_INDEX)}
-        className="flex h-9 min-w-12 items-center justify-center gap-1 rounded-xl px-2 text-xs font-bold text-brand-ink transition hover:bg-brand-mist/50"
+        className="flex h-9 flex-1 items-center justify-center gap-1 rounded-xl border border-brand-teal/10 bg-white px-2 text-[11px] font-bold text-brand-ink transition hover:bg-brand-mist/50 focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
       >
         <RotateCcw className="h-3.5 w-3.5" />
         {label}
@@ -63,7 +63,7 @@ export function FontSizeControls() {
         aria-label="Aumentar tamanho da fonte"
         disabled={scaleIndex === FONT_SCALES.length - 1}
         onClick={() => setScaleIndex((current) => Math.min(FONT_SCALES.length - 1, current + 1))}
-        className="flex h-9 w-9 items-center justify-center rounded-xl text-brand-teal transition hover:bg-brand-mist/50 disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand-teal/10 bg-white text-brand-teal transition hover:bg-brand-mist/50 focus:outline-none focus:ring-2 focus:ring-brand-teal/30 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Plus className="h-4 w-4" />
       </button>

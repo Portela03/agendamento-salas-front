@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import ContrastToggle from '../ContrastToggle';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -23,10 +22,13 @@ export function Navbar({ onToggleSidebar }: NavbarProps) {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setDropdownOpen(false);
       }
     }
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -48,14 +50,10 @@ export function Navbar({ onToggleSidebar }: NavbarProps) {
         </span>
       </div>
 
-      {/* Contraste + Right: user dropdown */}
-      <div className="ml-auto flex items-center gap-2">
-        <ContrastToggle /> {/* <-- inserido */}
-      </div>
-      
-      {/* Right: user dropdown */}
-      {user && (
-        <div className="relative" ref={dropdownRef}>
+      <div className="ml-auto flex items-center gap-3">
+        {/* Right: user dropdown */}
+        {user && (
+          <div className="relative" ref={dropdownRef}>
           <button
             aria-label={user.name}
             className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-white/10"
@@ -87,8 +85,9 @@ export function Navbar({ onToggleSidebar }: NavbarProps) {
               </button>
             </div>
           )}
-        </div>
-      )}
+       </div>
+        )}
+      </div>
     </header>
   );
 }

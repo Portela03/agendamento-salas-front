@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
+  Accessibility,
   Building2,
   CalendarDays,
   CalendarPlus2,
@@ -10,6 +12,8 @@ import {
   Users2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import ContrastToggle from '../ContrastToggle';
+import { FontSizeControls } from '../accessibility/FontSizeControls';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -31,19 +35,10 @@ const coordenadorLinks = [
   { to: '/coordenador/historico', label: 'Histórico', icon: History },
 ];
 
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0].toUpperCase())
-    .join('');
-}
-
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, signOut } = useAuth();
-
   const links = user?.role === 'COORDENADOR' ? coordenadorLinks : professorLinks;
+  const [accessibilityOpen, setAccessibilityOpen] = useState(false);
 
   return (
     <>
@@ -94,22 +89,50 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         ))}
       </div>
 
-      {/* Footer */}
-      <div className="border-t border-white/10 px-2 py-4">
-        {isOpen && user && (
-          <div className="mb-3 flex items-center gap-3 rounded-xl bg-white/10 px-3 py-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-xs font-bold text-white">
-              {getInitials(user.name)}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{user.name}</p>
-              <p className="text-[11px] text-white/50">
-                {user.role === 'COORDENADOR' ? 'Coordenador' : 'Professor'}
-              </p>
-            </div>
-          </div>
-        )}
+      <div className="px-2 pb-3">
+        <div className="mb-3">
+          <div className={`relative ${isOpen ? '' : 'flex justify-center'}`}>
+            <button
+              type="button"
+              onClick={() => setAccessibilityOpen((v) => !v)}
+              className={`flex w-full items-center rounded-xl py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white ${
+                isOpen ? 'gap-3 px-3' : 'justify-center px-0'
+              }`}
+              aria-expanded={accessibilityOpen}
+              aria-label="Acessibilidade"
+              title={!isOpen ? 'Acessibilidade' : undefined}
+            >
+              <Accessibility className="h-4 w-4 shrink-0" />
+              {isOpen && <span>Acessibilidade</span>}
+              {isOpen && (
+                <span className="ml-auto text-[10px] font-bold">
+                  {accessibilityOpen ? '−' : '+'}
+                </span>
+              )}
+            </button>
 
+            {accessibilityOpen && (
+              <div
+                className={`${
+                  isOpen ? 'mt-2' : 'absolute left-full top-0 z-40 ml-2 w-56'
+                } rounded-2xl border border-white/10 bg-brand-teal/95 p-2 shadow-xl backdrop-blur`}
+              >
+                <div className="flex flex-col gap-1.5">
+                  <ContrastToggle />
+                  <FontSizeControls />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+{/* Footer */}
+
+    
+
+      <div className="border-t border-white/10 px-2 py-4">
+        {/* Footer */}
         <button
           title="Sair"
           className={`flex w-full items-center rounded-xl py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white ${
