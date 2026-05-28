@@ -29,8 +29,28 @@ export function useNotifications() {
     }
   }, []);
 
+  const markOneAsRead = useCallback(async (id: string) => {
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+    try {
+      await notificacaoService.marcarUmaComoLida(id);
+    } catch {
+      void load();
+    }
+  }, [load]);
+
+  const deleteOne = useCallback(async (id: string) => {
+    // Optimistic update — remove locally first
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await notificacaoService.deletar(id);
+    } catch {
+      // Revert on failure by re-fetching
+      void load();
+    }
+  }, [load]);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
   const unreadNotifications = notifications.filter((n) => !n.read);
 
-  return { notifications, unreadNotifications, unreadCount, loading, markAllAsRead, reload: load };
+  return { notifications, unreadNotifications, unreadCount, loading, markAllAsRead, markOneAsRead, deleteOne, reload: load };
 }
