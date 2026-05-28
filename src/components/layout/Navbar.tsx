@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, LogOut, Menu } from 'lucide-react';
+import { Bell, LogOut, Menu, Trash2, Undo2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import ContrastToggle from '../ContrastToggle';
 import { Notificacao } from '../../services/notificacaoService';
@@ -9,6 +9,7 @@ interface NavbarProps {
   unreadCount: number;
   notifications: Notificacao[];
   onMarkAllAsRead: () => void;
+  onDeleteOne: (id: string) => void;
 }
 
 const typeConfig: Record<Notificacao['type'], { icon: string; label: string; color: string }> = {
@@ -40,12 +41,52 @@ function getInitials(name: string) {
     .join('');
 }
 
-export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllAsRead }: NavbarProps) {
+export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllAsRead, onDeleteOne }: NavbarProps) {
   const { user, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  // Map of notif id → countdown seconds remaining (null = not pending delete)
+  const [pendingDelete, setPendingDelete] = useState<Record<string, number>>({});
+  const countdownRefs = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // Clean up intervals on unmount
+  useEffect(() => {
+    const refs = countdownRefs.current;
+    return () => { Object.values(refs).forEach(clearInterval); };
+  }, []);
+
+  function startDelete(id: string) {
+    const SECONDS = 5;
+    setPendingDelete((prev) => ({ ...prev, [id]: SECONDS }));
+
+    const interval = setInterval(() => {
+      setPendingDelete((prev) => {
+        const remaining = (prev[id] ?? 0) - 1;
+        if (remaining <= 0) {
+          clearInterval(interval);
+          delete countdownRefs.current[id];
+          // Fire actual delete after countdown
+          onDeleteOne(id);
+          const { [id]: _, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [id]: remaining };
+      });
+    }, 1000);
+
+    countdownRefs.current[id] = interval;
+  }
+
+  function undoDelete(id: string) {
+    clearInterval(countdownRefs.current[id]);
+    delete countdownRefs.current[id];
+    setPendingDelete((prev) => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -146,27 +187,66 @@ export function Navbar({ onToggleSidebar, unreadCount, notifications, onMarkAllA
                   ) : (
                     sorted.map((n) => {
                       const cfg = typeConfig[n.type];
+                      const isPending = n.id in pendingDelete;
+                      const countdown = pendingDelete[n.id];
                       return (
                         <div
                           key={n.id}
-                          className={`flex items-start gap-3 border-b border-gray-50 px-4 py-3 last:border-0 transition-colors ${
-                            !n.read ? 'bg-brand-teal/5' : 'bg-white hover:bg-gray-50'
+                          className={`relative flex items-start gap-3 border-b border-gray-50 px-4 py-3 last:border-0 transition-colors ${
+                            isPending
+                              ? 'bg-rose-50'
+                              : !n.read
+                              ? 'bg-brand-teal/5'
+                              : 'bg-white hover:bg-gray-50'
                           }`}
                         >
-                          <span className="mt-0.5 flex-shrink-0 text-base leading-none">
-                            {cfg.icon}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
-                            <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-gray-600">
-                              {n.message}
-                            </p>
-                            <p className="mt-1 text-[10px] text-gray-400">
-                              {relativeTime(n.createdAt)}
-                            </p>
-                          </div>
-                          {!n.read && (
-                            <span className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-rose-500" />
+                          {isPending ? (
+                            /* ── Estado "pendente de exclusão" ── */
+                            <div className="flex flex-1 items-center gap-3">
+                              <Trash2 className="h-4 w-4 flex-shrink-0 text-rose-400" />
+                              <p className="flex-1 text-xs text-rose-600">
+                                Notificação removida.{' '}
+                                <button
+                                  onClick={() => undoDelete(n.id)}
+                                  className="inline-flex items-center gap-1 font-semibold underline hover:no-underline"
+                                >
+                                  <Undo2 className="h-3 w-3" />
+                                  Desfazer
+                                </button>
+                              </p>
+                              {/* Barra de progresso */}
+                              <span className="ml-1 flex-shrink-0 rounded-full bg-rose-200 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+                                {countdown}s
+                              </span>
+                            </div>
+                          ) : (
+                            /* ── Estado normal ── */
+                            <>
+                              <span className="mt-0.5 flex-shrink-0 text-base leading-none">
+                                {cfg.icon}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
+                                <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-gray-600">
+                                  {n.message}
+                                </p>
+                                <p className="mt-1 text-[10px] text-gray-400">
+                                  {relativeTime(n.createdAt)}
+                                </p>
+                              </div>
+                              <div className="ml-1 flex flex-shrink-0 flex-col items-center gap-1.5">
+                                {!n.read && (
+                                  <span className="h-2 w-2 rounded-full bg-rose-500" />
+                                )}
+                                <button
+                                  onClick={() => startDelete(n.id)}
+                                  aria-label="Remover notificação"
+                                  className="flex h-6 w-6 items-center justify-center rounded-full text-gray-300 transition-colors hover:bg-rose-100 hover:text-rose-500"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </>
                           )}
                         </div>
                       );

@@ -153,7 +153,7 @@ function NotificationManager({ unreadNotifications }: NotificationManagerProps) 
 export function AppLayout() {
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
-  const { notifications, unreadNotifications, unreadCount, markAllAsRead } = useNotifications();
+  const { notifications, unreadNotifications, unreadCount, markAllAsRead, deleteOne } = useNotifications();
 
   return (
     <div className="min-h-screen bg-background high-contrast:bg-gray-900">
@@ -162,6 +162,7 @@ export function AppLayout() {
         unreadCount={unreadCount}
         notifications={notifications}
         onMarkAllAsRead={markAllAsRead}
+        onDeleteOne={deleteOne}
       />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} notifications={notifications} />
 

@@ -29,8 +29,19 @@ export function useNotifications() {
     }
   }, []);
 
+  const deleteOne = useCallback(async (id: string) => {
+    // Optimistic update — remove locally first
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await notificacaoService.deletar(id);
+    } catch {
+      // Revert on failure by re-fetching
+      void load();
+    }
+  }, [load]);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
   const unreadNotifications = notifications.filter((n) => !n.read);
 
-  return { notifications, unreadNotifications, unreadCount, loading, markAllAsRead, reload: load };
+  return { notifications, unreadNotifications, unreadCount, loading, markAllAsRead, deleteOne, reload: load };
 }

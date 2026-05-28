@@ -23,4 +23,8 @@ export const notificacaoService = {
   marcarTodasComoLidas: async (): Promise<void> => {
     await api.patch('/notificacoes/read-all');
   },
+
+  deletar: async (id: string): Promise<void> => {
+    await api.delete(`/notificacoes/${id}`);
+  },
 };
